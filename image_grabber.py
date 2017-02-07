@@ -9,7 +9,7 @@ from bs4 import BeautifulSoup
 from PIL import Image
 from io import BytesIO
 
-url_start = "https://www.wnacg.com/photos-index-aid-35931.html"
+url_start = "https://www.wnacg.com/photos-index-aid-35979.html"
 base_path = "/home/qing/Hmanga/"
 
 
@@ -23,32 +23,36 @@ class ImageGrabber(object):
 
     def _url_resolver(self, next_url):
         """Get the data url from passed url."""
-        url = "http://" + (self.url.split('/'))[-2] + next_url
+        url = "https://" + (self.url.split('/'))[-2] + next_url
         r = requests.get(url)
         soup = BeautifulSoup(r.content, 'lxml')
         src = soup.find("img", {"id": "picarea"})['src']
         url_list = src.split('/')
         # get filename format
         self.format = url_list[-1]
-        self.n_digits = len(re.findall(r'\d+', self.format)[0])
+        self.digit_index = re.findall(r'\d+', self.format)[0]
+        self.n_digits = len(self.digit_index)
+        self.fn_template = url_list[-1].split('.')[0]
+        self.index_location = self.fn_template.find(self.digit_index)
         self.img_format = url_list[-1].split('.')[-1]
-        return "http://" + (self.url.split('/'))[-2] + '/'.join(url_list[:4]) + '/'
+        return "https://" + (self.url.split('/'))[-2] + '/'.join(url_list[:4]) + '/'
 
     def _download_list(self, c_list, dash=False):
         """Download the special naming files."""
         for index in c_list:
-            new_folder = os.path.join(base_path, self.title)
+            new_folder = os.path.join(self._base_path_modifier(), self.title)
             if dash:
-                filename = self.n_digits * '0' + '-' + index + '.' + self.img_format
+                filename = self.fn_template.replace(self.digit_index, '0'.zfill(self.n_digits)) + '-' + index + '.' + self.img_format
             else:
-                filename = self.n_digits * '0' + index + '.' + self.img_format
+                filename = self.fn_template.replace(self.digit_index, '0'.zfill(self.n_digits)) + index + '.' + self.img_format
             r = requests.get(self.data_url + filename)
-            try:
-                img = Image.open(BytesIO(r.content))
-                img.save(new_folder + '/' + filename)
-                print(self.data_url + filename + '  downloaded.')
-            except OSError:
-                pass
+            if r.status_code == 200:
+                try:
+                    img = Image.open(BytesIO(r.content))
+                    img.save(new_folder + '/' + filename)
+                    print(self.data_url + filename + '  downloaded.')
+                except OSError:
+                    pass
 
     def validate(self):
         """Validate the url and content."""
@@ -57,7 +61,7 @@ class ImageGrabber(object):
             if self.result.status_code == 200:
                 soup = BeautifulSoup(self.result.content, 'lxml')
                 self.title = soup.find_all("h2")[0].string.strip()
-                link = soup.find("div", {"class": "pic_box"}).find('a')
+                link = soup.find_all("div", {"class": "pic_box"})[-1].find('a')
                 if link:
                     self.data_url = self._url_resolver(link['href'])
                     patten = re.compile(r'頁數')
@@ -109,17 +113,18 @@ class ImageGrabber(object):
             pass
         # handle normal image naming rules
         for index in range(0, self.page_num + 1):
-            filename = str(index).zfill(self.n_digits) + '.' + self.img_format
+            filename = self.fn_template.replace(self.digit_index, str(index).zfill(self.n_digits)) + '.' + self.img_format
             r = requests.get(self.data_url + filename)
             if r.status_code == 404:
-                filename = str(index).zfill(self.n_digits) + '.' + 'png'
+                filename = self.fn_template.replace(self.digit_index, str(index).zfill(self.n_digits)) + '.' + 'png'
                 r = requests.get(self.data_url + filename)
-            try:
-                img = Image.open(BytesIO(r.content))
-                img.save(new_folder + '/' + filename)
-                print(self.data_url + filename + '  downloaded.')
-            except OSError:
-                print(self.data_url + filename + '  not existing.')
+            if r.status_code == 200:
+                try:
+                    img = Image.open(BytesIO(r.content))
+                    img.save(new_folder + '/' + filename)
+                    print(self.data_url + filename + '  downloaded.')
+                except OSError:
+                    print(self.data_url + filename + '  not existing.')
         # handle special naming rules
         lower_list = ['a', 'b', 'c', 'd', 'e', 'f', 'g']
         capital_list = ['A', 'B', 'C', 'D', 'E', 'F', 'G']
