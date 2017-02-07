@@ -8,8 +8,9 @@ from bs4 import BeautifulSoup
 
 from PIL import Image
 from io import BytesIO
+from url_processor import URLProcessor
 
-url_start = "https://www.wnacg.com/photos-index-aid-35979.html"
+url_start = "https://www.wnacg.com/photos-index-aid-35876.html"
 base_path = "/home/qing/Hmanga/"
 
 
@@ -19,40 +20,16 @@ class ImageGrabber(object):
     def __init__(self, start_url):
         """The constructor func."""
         self.url = start_url
+        self.base_url = "https://" + (self.url.split('/'))[-2]
         self.validate()
 
     def _url_resolver(self, next_url):
         """Get the data url from passed url."""
-        url = "https://" + (self.url.split('/'))[-2] + next_url
+        url = self.base_url + next_url
         r = requests.get(url)
         soup = BeautifulSoup(r.content, 'lxml')
         src = soup.find("img", {"id": "picarea"})['src']
-        url_list = src.split('/')
-        # get filename format
-        self.format = url_list[-1]
-        self.digit_index = re.findall(r'\d+', self.format)[0]
-        self.n_digits = len(self.digit_index)
-        self.fn_template = url_list[-1].split('.')[0]
-        self.index_location = self.fn_template.find(self.digit_index)
-        self.img_format = url_list[-1].split('.')[-1]
-        return "https://" + (self.url.split('/'))[-2] + '/'.join(url_list[:4]) + '/'
-
-    def _download_list(self, c_list, dash=False):
-        """Download the special naming files."""
-        for index in c_list:
-            new_folder = os.path.join(self._base_path_modifier(), self.title)
-            if dash:
-                filename = self.fn_template.replace(self.digit_index, '0'.zfill(self.n_digits)) + '-' + index + '.' + self.img_format
-            else:
-                filename = self.fn_template.replace(self.digit_index, '0'.zfill(self.n_digits)) + index + '.' + self.img_format
-            r = requests.get(self.data_url + filename)
-            if r.status_code == 200:
-                try:
-                    img = Image.open(BytesIO(r.content))
-                    img.save(new_folder + '/' + filename)
-                    print(self.data_url + filename + '  downloaded.')
-                except OSError:
-                    pass
+        return src
 
     def validate(self):
         """Validate the url and content."""
@@ -104,6 +81,26 @@ class ImageGrabber(object):
         """Generate the new path based on the tags."""
         return base_path + self.tag + '/' + self.subtag + '/'
 
+    def _download_list(self, iter_list):
+        """Download files in the list."""
+        new_folder = os.path.join(self._base_path_modifier(), self.title)
+        for url in iter_list:
+            file_url = self.base_url + url
+            r = requests.get(file_url)
+            if r.status_code == 404:
+                if file_url.split('.')[-1] == 'jpg':
+                    file_url = file_url.replace('jpg', 'png')
+                else:
+                    file_url = file_url.replace('png', 'jpg')
+                r = requests.get(file_url)
+            if r.status_code == 200:
+                try:
+                    img = Image.open(BytesIO(r.content))
+                    img.save(new_folder + '/' + file_url.split('/')[-1])
+                    print(file_url + '  downloaded.')
+                except OSError:
+                    print(file_url + '  cannot be saved.')
+
     def download(self):
         """Download images."""
         new_folder = os.path.join(self._base_path_modifier(), self.title)
@@ -112,26 +109,10 @@ class ImageGrabber(object):
         except OSError:
             pass
         # handle normal image naming rules
-        for index in range(0, self.page_num + 1):
-            filename = self.fn_template.replace(self.digit_index, str(index).zfill(self.n_digits)) + '.' + self.img_format
-            r = requests.get(self.data_url + filename)
-            if r.status_code == 404:
-                filename = self.fn_template.replace(self.digit_index, str(index).zfill(self.n_digits)) + '.' + 'png'
-                r = requests.get(self.data_url + filename)
-            if r.status_code == 200:
-                try:
-                    img = Image.open(BytesIO(r.content))
-                    img.save(new_folder + '/' + filename)
-                    print(self.data_url + filename + '  downloaded.')
-                except OSError:
-                    print(self.data_url + filename + '  not existing.')
-        # handle special naming rules
-        lower_list = ['a', 'b', 'c', 'd', 'e', 'f', 'g']
-        capital_list = ['A', 'B', 'C', 'D', 'E', 'F', 'G']
-        number_list = ['0', '1', '2', '3', '4', '5', '6']
-        self._download_list(lower_list)
-        self._download_list(capital_list)
-        self._download_list(number_list, dash=True)
+        url_parsed = URLProcessor(self.data_url, self.page_num)
+        self._download_list(url_parsed.normal_url_list())
+        self._download_list(url_parsed.special_url_list())
+        self._download_list(url_parsed.special_url_list(dash=True))
 
 
 manga = ImageGrabber(url_start)
