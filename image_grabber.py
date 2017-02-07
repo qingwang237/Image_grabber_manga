@@ -9,7 +9,7 @@ from bs4 import BeautifulSoup
 from PIL import Image
 from io import BytesIO
 
-url_start = "https://www.wnacg.com/photos-index-aid-35988.html"
+url_start = "https://www.wnacg.com/photos-index-aid-35931.html"
 base_path = "/home/qing/Hmanga/"
 
 
@@ -61,10 +61,12 @@ class ImageGrabber(object):
                 if link:
                     self.data_url = self._url_resolver(link['href'])
                     patten = re.compile(r'頁數')
-                    pages = re.findall(r'\d+', soup.find("label", text=patten).string)
+                    pages = re.findall(
+                        r'\d+', soup.find("label", text=patten).string)
                     self.page_num = int(pages[0])
                     # find the catagory and lang tags
-                    tags = soup.find("div", {"class": "png bread"}).find_all('a')
+                    tags = soup.find(
+                        "div", {"class": "png bread"}).find_all('a')
                     if tags[1].string == "單行本":
                         self.tag = "volume"
                     elif tags[1].string == "雜誌&短篇":
@@ -94,17 +96,24 @@ class ImageGrabber(object):
             print("The url is not set.")
             self.valid = False
 
+    def _base_path_modifier(self):
+        """Generate the new path based on the tags."""
+        return base_path + self.tag + '/' + self.subtag + '/'
+
     def download(self):
         """Download images."""
-        new_folder = os.path.join(base_path, self.title)
+        new_folder = os.path.join(self._base_path_modifier(), self.title)
         try:
-            os.mkdir(new_folder, mode=0o755)
-        except FileExistsError:
+            os.makedirs(new_folder, mode=0o755, exist_ok=True)
+        except OSError:
             pass
         # handle normal image naming rules
         for index in range(0, self.page_num + 1):
             filename = str(index).zfill(self.n_digits) + '.' + self.img_format
             r = requests.get(self.data_url + filename)
+            if r.status_code == 404:
+                filename = str(index).zfill(self.n_digits) + '.' + 'png'
+                r = requests.get(self.data_url + filename)
             try:
                 img = Image.open(BytesIO(r.content))
                 img.save(new_folder + '/' + filename)
