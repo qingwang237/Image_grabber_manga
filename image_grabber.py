@@ -2,6 +2,7 @@
 """This use requests to download images in a series mode."""
 
 import os
+from os.path import expanduser
 import re
 import requests
 from bs4 import BeautifulSoup
@@ -9,17 +10,16 @@ from bs4 import BeautifulSoup
 from PIL import Image
 from io import BytesIO
 from url_processor import URLProcessor
-
-url_start = "https://www.wnacg.com/photos-index-aid-35876.html"
-base_path = "/home/qing/Hmanga/"
+import click
 
 
 class ImageGrabber(object):
     """the image grabber class."""
 
-    def __init__(self, start_url):
+    def __init__(self, start_url, base_path):
         """The constructor func."""
         self.url = start_url
+        self.base_path = base_path
         self.base_url = "https://" + (self.url.split('/'))[-2]
         self.validate()
 
@@ -79,7 +79,7 @@ class ImageGrabber(object):
 
     def _base_path_modifier(self):
         """Generate the new path based on the tags."""
-        return base_path + self.tag + '/' + self.subtag + '/'
+        return self.base_path + self.tag + '/' + self.subtag + '/'
 
     def _download_list(self, iter_list):
         """Download files in the list."""
@@ -115,8 +115,21 @@ class ImageGrabber(object):
         self._download_list(url_parsed.special_url_list(dash=True))
 
 
-manga = ImageGrabber(url_start)
-if manga.valid:
-    manga.download()
-else:
-    print("The start url is not recognized.")
+@click.command()
+@click.option('--url', help='The starting url of the manga.')
+@click.option('--folder', default='~/Hmanga/',
+              help='The folder to save manga.')
+def downloader(url, folder):
+    """The main func."""
+    path = expanduser(folder)
+    if not path.endswith(os.path.sep):
+        path += os.path.sep
+    manga = ImageGrabber(url, path)
+    if manga.valid:
+        manga.download()
+    else:
+        print("The start url is not recognized.")
+
+
+if __name__ == '__main__':
+    downloader()
