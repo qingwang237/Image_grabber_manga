@@ -43,12 +43,12 @@ class URLProcessor(object):
                         for t in range(self.num_vars)}
             yield self.template.format(**rep_dict)
 
-    def special_url_list(self, dash=False):
+    def special_url_list(self, sep=''):
         """Generate special urls for iteration."""
         sp_c_list = LC_LIST + CAP_LIST + NUM_LIST
         for c in sp_c_list:
-            if dash:
-                rep_dict = {'var%i' % t: '0'.zfill(self.n_digits[t]) if t < self.num_vars - 1 else '0'.zfill(self.n_digits[t]) + '-' + c
+            if sep:
+                rep_dict = {'var%i' % t: '0'.zfill(self.n_digits[t]) if t < self.num_vars - 1 else '0'.zfill(self.n_digits[t]) + sep + c
                             for t in range(self.num_vars)}
             else:
                 rep_dict = {'var%i' % t: '0'.zfill(self.n_digits[t]) if t < self.num_vars - 1 else '0'.zfill(self.n_digits[t]) + c

@@ -113,7 +113,8 @@ class ImageGrabber(object):
         url_parsed = URLProcessor(self.data_url, self.page_num)
         self._download_list(url_parsed.normal_url_list())
         self._download_list(url_parsed.special_url_list())
-        self._download_list(url_parsed.special_url_list(dash=True))
+        self._download_list(url_parsed.special_url_list(sep='-'))
+        self._download_list(url_parsed.special_url_list(sep='_'))
 
 
 @click.command()
