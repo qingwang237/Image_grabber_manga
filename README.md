@@ -1,4 +1,4 @@
-# Project Title
+# Scrapy for Hmanga
 
 The automated images downloader for wnacg.org.
 
