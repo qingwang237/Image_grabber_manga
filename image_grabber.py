@@ -17,11 +17,12 @@ import click
 class ImageGrabber(object):
     """the image grabber class."""
 
-    def __init__(self, start_url, base_path):
+    def __init__(self, start_url, base_path, mode):
         """The constructor func."""
         self.url = start_url
         self.base_path = base_path
         self.base_url = "https://" + (self.url.split('/'))[-2]
+        self.mode = mode
         self.validate()
 
     def _url_resolver(self, next_url):
@@ -40,6 +41,8 @@ class ImageGrabber(object):
                 soup = BeautifulSoup(self.result.content, 'lxml')
                 self.title = soup.find_all("h2")[0].string.strip()
                 link = soup.find_all("div", {"class": "pic_box"})[-1].find('a')
+                # also save the first link
+                self.img_link = soup.find("div", {"class": "pic_box"}).find('a')['href']
                 if link:
                     self.data_url = self._url_resolver(link['href'])
                     patten = re.compile(r'頁數')
@@ -82,6 +85,16 @@ class ImageGrabber(object):
         """Generate the new path based on the tags."""
         return self.base_path + self.tag + '/' + self.subtag + '/'
 
+    def _page_crawl(self, start):
+        """The page crawler iterator."""
+        url = self.base_url + start
+        for i in range(self.page_num):
+            result = requests.get(url)
+            soup = BeautifulSoup(result.content, 'lxml')
+            img_url = soup.find('span', {'id': 'imgarea'}).find('a').find('img')['src']
+            url = self.base_url + soup.find('div', {'class': 'newpage'}).find_all('a')[-1]['href']
+            yield img_url
+
     def _download_list(self, iter_list):
         """Download files in the list."""
         new_folder = os.path.join(self._base_path_modifier(), self.title)
@@ -110,23 +123,28 @@ class ImageGrabber(object):
         except OSError:
             pass
         # handle normal image naming rules
-        url_parsed = URLProcessor(self.data_url, self.page_num)
-        self._download_list(url_parsed.normal_url_list())
-        self._download_list(url_parsed.special_url_list())
-        self._download_list(url_parsed.special_url_list(sep='-'))
-        self._download_list(url_parsed.special_url_list(sep='_'))
+        if self.mode == 'crawl':
+            self._download_list(self._page_crawl(self.img_link))
+        else:
+            url_parsed = URLProcessor(self.data_url, self.page_num)
+            self._download_list(url_parsed.normal_url_list())
+            self._download_list(url_parsed.special_url_list())
+            self._download_list(url_parsed.special_url_list(sep='-'))
+            self._download_list(url_parsed.special_url_list(sep='_'))
 
 
 @click.command()
 @click.option('--url', help='The starting url of the manga.')
 @click.option('--folder', default='~/Hmanga/',
               help='The folder to save manga.')
-def downloader(url, folder):
+@click.option('--mode', default='crawl',
+              help='The mode for downloading')
+def downloader(url, folder, mode):
     """The main func."""
     path = expanduser(folder)
     if not path.endswith(os.path.sep):
         path += os.path.sep
-    manga = ImageGrabber(url, path)
+    manga = ImageGrabber(url, path, mode)
     if manga.valid:
         manga.download()
     else:
