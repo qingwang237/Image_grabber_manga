@@ -98,22 +98,24 @@ class ImageGrabber(object):
     def _download_list(self, iter_list):
         """Download files in the list."""
         new_folder = os.path.join(self._base_path_modifier(), self.title)
-        for url in iter_list:
-            file_url = self.base_url + url
-            r = requests.get(file_url)
-            if r.status_code == 404:
-                if file_url.split('.')[-1] == 'jpg':
-                    file_url = file_url.replace('jpg', 'png')
-                else:
-                    file_url = file_url.replace('png', 'jpg')
+        with click.progressbar(iter_list, length=self.page_num) as bar:
+            for url in bar:
+                file_url = self.base_url + url
                 r = requests.get(file_url)
-            if r.status_code == 200:
-                try:
-                    img = Image.open(BytesIO(r.content))
-                    img.save(new_folder + '/' + file_url.split('/')[-1])
-                    print(file_url + '  downloaded.')
-                except OSError:
-                    print(file_url + '  cannot be saved.')
+                if r.status_code == 404:
+                    if file_url.split('.')[-1] == 'jpg':
+                        file_url = file_url.replace('jpg', 'png')
+                    else:
+                        file_url = file_url.replace('png', 'jpg')
+                    r = requests.get(file_url)
+                elif r.status_code == 200:
+                    try:
+                        img = Image.open(BytesIO(r.content))
+                        img.save(new_folder + '/' + file_url.split('/')[-1])
+                    except OSError:
+                        print(file_url + '  cannot be saved.')
+                else:
+                    pass
 
     def download(self):
         """Download images."""
