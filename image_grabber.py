@@ -60,16 +60,19 @@ class ImageGrabber(object):
                         self.tag = "doujin"
                     else:
                         self.tag = "unknown"
-                    if tags[2].string == "漢化":
-                        self.subtag = "CN"
-                    elif tags[2].string == "日語":
-                        self.subtag = "JP"
-                    elif tags[2].string == "CG畫集":
-                        self.subtag = "CG"
-                    elif tags[2].string == "Cosplay":
-                        self.subtag = "COS"
-                    else:
-                        self.subtag = "unknown"
+                    try:
+                        if tags[2].string == "漢化":
+                            self.subtag = "CN"
+                        elif tags[2].string == "日語":
+                            self.subtag = "JP"
+                        elif tags[2].string == "CG畫集":
+                            self.subtag = "CG"
+                        elif tags[2].string == "Cosplay":
+                            self.subtag = "COS"
+                        else:
+                            self.subtag = "unknown"
+                    except IndexError:
+                            self.subtag = "unknown"
                     self.valid = True
                 else:
                     print("Cannot find data url.")
