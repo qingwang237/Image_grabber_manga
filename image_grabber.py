@@ -149,7 +149,11 @@ def downloader(url, folder, mode):
     path = expanduser(folder)
     if not path.endswith(os.path.sep):
         path += os.path.sep
-    manga = ImageGrabber(url, path, mode)
+    if url:
+        manga = ImageGrabber(url, path, mode)
+    else:
+        print("\nWarning:\n --url must be provided.\n")
+        return
     if manga.valid:
         manga.download()
     else:
