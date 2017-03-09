@@ -39,7 +39,12 @@ class ImageGrabber(object):
             self.result = requests.get(self.url)
             if self.result.status_code == 200:
                 soup = BeautifulSoup(self.result.content, 'lxml')
-                self.title = soup.find_all("h2")[0].string.strip()
+                try:
+                    self.title = soup.find_all("h2")[0].string.strip()
+                except IndexError:
+                    print("Please make sure the url is correct.")
+                    self.valid = False
+                    return
                 link = soup.find_all("div", {"class": "pic_box"})[-1].find('a')
                 # also save the first link
                 self.img_link = soup.find("div", {"class": "pic_box"}).find('a')['href']
