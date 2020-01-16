@@ -109,7 +109,8 @@ class ImageGrabber(object):
         new_folder = os.path.join(self._base_path_modifier(), self.title)
         with click.progressbar(iter_list, length=self.page_num) as bar:
             for url in bar:
-                file_url = self.base_url + url
+                # TODO may need better url generator since it may change.
+                file_url = "https:" + url
                 r = requests.get(file_url)
                 if r.status_code == 404:
                     if file_url.split(".")[-1] == "jpg":
