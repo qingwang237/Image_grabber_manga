@@ -94,7 +94,7 @@ class ImageGrabber(object):
     def _page_crawl(self, start):
         """The page crawler iterator."""
         url = self.base_url + start
-        for i in range(self.page_num):
+        for _i in range(self.page_num):
             result = requests.get(url)
             soup = BeautifulSoup(result.content, "lxml")
             img_url = soup.find("span", {"id": "imgarea"}).find("a").find("img")["src"]
