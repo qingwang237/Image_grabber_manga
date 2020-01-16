@@ -165,4 +165,4 @@ def downloader(url, folder, mode):
 
 
 if __name__ == "__main__":
-    downloader()
+    downloader()  # pylint: disable=no-value-for-parameter
