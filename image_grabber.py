@@ -166,12 +166,12 @@ def downloader(url, folder, mode):
     if url:
         manga = ImageGrabber(url, path, mode)
     else:
-        print("\nWarning:\n --url must be provided.\n")
+        click.echo("\nWarning:\n --url must be provided.\n")
         return
     if manga.valid:
         manga.download()
     else:
-        print("The start url is not recognized.")
+        click.echo("The start url is not recognized.")
 
 
 if __name__ == "__main__":
