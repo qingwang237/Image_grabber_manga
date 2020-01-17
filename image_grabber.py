@@ -12,6 +12,7 @@ from PIL import Image
 from io import BytesIO
 from url_processor import URLProcessor
 import click
+import zipfile
 
 
 class ImageGrabber(object):
@@ -107,6 +108,7 @@ class ImageGrabber(object):
     def _download_list(self, iter_list):
         """Download files in the list."""
         new_folder = os.path.join(self._base_path_modifier(), self.title)
+        img_list = []
         with click.progressbar(iter_list, length=self.page_num) as bar:
             for url in bar:
                 # TODO may need better url generator since it may change.
@@ -122,10 +124,17 @@ class ImageGrabber(object):
                     try:
                         img = Image.open(BytesIO(r.content))
                         img.save(new_folder + "/" + file_url.split("/")[-1])
+                        img_list.append(file_url.split("/")[-1])
                     except OSError:
                         print(file_url + "  cannot be saved.")
                 else:
                     pass
+        # generate cbz file
+        os.chdir(new_folder)
+        zipf = zipfile.ZipFile(f"{self.title}.cbz", "w", zipfile.ZIP_DEFLATED)
+        for img in img_list:
+            zipf.write(img, compress_type=zipfile.ZIP_DEFLATED)
+        zipf.close()
 
     def download(self):
         """Download images."""
