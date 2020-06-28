@@ -110,7 +110,7 @@ class ImageGrabber(object):
         new_folder = os.path.join(self._base_path_modifier(), self.title)
         img_list = []
         with click.progressbar(iter_list, length=self.page_num) as bar:
-            for url in bar:
+            for index, url in enumerate(bar):
                 # TODO may need better url generator since it may change.
                 file_url = "https:" + url
                 r = requests.get(file_url)
@@ -121,10 +121,11 @@ class ImageGrabber(object):
                         file_url = file_url.replace("png", "jpg")
                     r = requests.get(file_url)
                 elif r.status_code == 200:
+                    img_name = str(index) + "." + file_url.split(".")[-1]
                     try:
                         img = Image.open(BytesIO(r.content))
-                        img.save(new_folder + "/" + file_url.split("/")[-1])
-                        img_list.append(file_url.split("/")[-1])
+                        img.save(new_folder + "/" + img_name)
+                        img_list.append(img_name)
                     except OSError:
                         print(file_url + "  cannot be saved.")
                 else:
