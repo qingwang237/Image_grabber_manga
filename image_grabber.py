@@ -1,6 +1,11 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-"""This use requests to download images in a series mode."""
+"""
+This command line tool uses requests library to download 
+the images on website and save them in a user specified folder.
+It also zip all images and creates a cbz file for manga reader.
+
+"""
 
 import os
 from os.path import expanduser
