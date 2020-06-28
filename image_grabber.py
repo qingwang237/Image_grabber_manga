@@ -121,7 +121,7 @@ class ImageGrabber(object):
                         file_url = file_url.replace("png", "jpg")
                     r = requests.get(file_url)
                 elif r.status_code == 200:
-                    img_name = str(index) + '.' + file_url.split(".")[-1]
+                    img_name = str(index) + "." + file_url.split(".")[-1]
                     try:
                         img = Image.open(BytesIO(r.content))
                         img.save(new_folder + "/" + img_name)
