@@ -12,10 +12,14 @@ from .url_processor import URLProcessor
 
 
 class ImageGrabber(object):
-    """the image grabber class."""
+    """
+    the image grabber class.
+    """
 
     def __init__(self, start_url, base_path, mode):
-        """The constructor func."""
+        """
+        The constructor func.
+        """
         self.url = start_url
         self.base_path = base_path
         self.base_url = "https://" + (self.url.split("/"))[-2]
@@ -23,7 +27,9 @@ class ImageGrabber(object):
         self.validate()
 
     def _url_resolver(self, next_url):
-        """Get the data url from passed url."""
+        """
+        Get the data url from passed url.
+        """
         url = self.base_url + next_url
         r = requests.get(url)
         soup = BeautifulSoup(r.content, "lxml")
@@ -31,7 +37,9 @@ class ImageGrabber(object):
         return src
 
     def validate(self):
-        """Validate the url and content."""
+        """
+        Validate the url and content.
+        """
         if self.url:
             self.result = requests.get(self.url)
             if self.result.status_code == 200:
@@ -85,11 +93,15 @@ class ImageGrabber(object):
             self.valid = False
 
     def _base_path_modifier(self):
-        """Generate the new path based on the tags."""
+        """
+        Generate the new path based on the tags.
+        """
         return self.base_path + self.tag + "/" + self.subtag + "/"
 
     def _page_crawl(self, start):
-        """The page crawler iterator."""
+        """
+        The page crawler iterator.
+        """
         url = self.base_url + start
         for _i in range(self.page_num):
             result = requests.get(url)
@@ -102,7 +114,9 @@ class ImageGrabber(object):
             yield img_url
 
     def _download_list(self, iter_list):
-        """Download files in the list."""
+        """
+        Download files in the list.
+        """
         new_folder = os.path.join(self._base_path_modifier(), self.title)
         img_list = []
         with click.progressbar(iter_list, length=self.page_num) as bar:
@@ -134,7 +148,9 @@ class ImageGrabber(object):
         zipf.close()
 
     def download(self):
-        """Download images."""
+        """
+        Download images.
+        """
         new_folder = os.path.join(self._base_path_modifier(), self.title)
         try:
             os.makedirs(new_folder, mode=0o755, exist_ok=True)
