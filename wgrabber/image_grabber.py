@@ -1,23 +1,14 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
-"""
-This command line tool uses requests library to download 
-the images on website and save them in a user specified folder.
-It also zip all images and creates a cbz file for manga reader.
-
-"""
-
-import os
-from os.path import expanduser
-import re
-import requests
-from bs4 import BeautifulSoup
-
-from PIL import Image
 from io import BytesIO
-from url_processor import URLProcessor
-import click
+import os
+import re
 import zipfile
+
+import click
+from PIL import Image
+from bs4 import BeautifulSoup
+import requests
+
+from .url_processor import URLProcessor
 
 
 class ImageGrabber(object):
@@ -158,27 +149,3 @@ class ImageGrabber(object):
             self._download_list(url_parsed.special_url_list())
             self._download_list(url_parsed.special_url_list(sep="-"))
             self._download_list(url_parsed.special_url_list(sep="_"))
-
-
-@click.command()
-@click.option("--url", help="The starting url of the manga.")
-@click.option("--folder", default="~/Hmanga/", help="The folder to save manga.")
-@click.option("--mode", default="crawl", help="The mode for downloading")
-def downloader(url, folder, mode):
-    """The main func."""
-    path = expanduser(folder)
-    if not path.endswith(os.path.sep):
-        path += os.path.sep
-    if url:
-        manga = ImageGrabber(url, path, mode)
-    else:
-        click.echo("\nWarning:\n --url must be provided.\n")
-        return
-    if manga.valid:
-        manga.download()
-    else:
-        click.echo("The start url is not recognized.")
-
-
-if __name__ == "__main__":
-    downloader()  # pylint: disable=no-value-for-parameter
