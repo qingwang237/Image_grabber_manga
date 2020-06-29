@@ -32,5 +32,9 @@ setup(
         "Click==7.0",
         "Pillow==7.0.0",
     ],
+    setup_requires=['pytest-runner', 'flake8', 'pylint', 'black'],
+    tests_require=[
+        'pytest', 'coverage'
+    ],
     entry_points={"console_scripts": ["wgrabber=wgrabber.__main__:main",]},
 )
