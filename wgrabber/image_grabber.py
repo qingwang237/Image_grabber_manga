@@ -1,25 +1,25 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
-"""This use requests to download images in a series mode."""
-
-import os
-from os.path import expanduser
-import re
-import requests
-from bs4 import BeautifulSoup
-
-from PIL import Image
 from io import BytesIO
-from url_processor import URLProcessor
-import click
+import os
+import re
 import zipfile
+
+import click
+from PIL import Image
+from bs4 import BeautifulSoup
+import requests
+
+from .url_processor import URLProcessor
 
 
 class ImageGrabber(object):
-    """the image grabber class."""
+    """
+    the image grabber class.
+    """
 
     def __init__(self, start_url, base_path, mode):
-        """The constructor func."""
+        """
+        The constructor func.
+        """
         self.url = start_url
         self.base_path = base_path
         self.base_url = "https://" + (self.url.split("/"))[-2]
@@ -27,7 +27,9 @@ class ImageGrabber(object):
         self.validate()
 
     def _url_resolver(self, next_url):
-        """Get the data url from passed url."""
+        """
+        Get the data url from passed url.
+        """
         url = self.base_url + next_url
         r = requests.get(url)
         soup = BeautifulSoup(r.content, "lxml")
@@ -35,7 +37,9 @@ class ImageGrabber(object):
         return src
 
     def validate(self):
-        """Validate the url and content."""
+        """
+        Validate the url and content.
+        """
         if self.url:
             self.result = requests.get(self.url)
             if self.result.status_code == 200:
@@ -89,11 +93,15 @@ class ImageGrabber(object):
             self.valid = False
 
     def _base_path_modifier(self):
-        """Generate the new path based on the tags."""
+        """
+        Generate the new path based on the tags.
+        """
         return self.base_path + self.tag + "/" + self.subtag + "/"
 
     def _page_crawl(self, start):
-        """The page crawler iterator."""
+        """
+        The page crawler iterator.
+        """
         url = self.base_url + start
         for _i in range(self.page_num):
             result = requests.get(url)
@@ -106,7 +114,9 @@ class ImageGrabber(object):
             yield img_url
 
     def _download_list(self, iter_list):
-        """Download files in the list."""
+        """
+        Download files in the list.
+        """
         new_folder = os.path.join(self._base_path_modifier(), self.title)
         img_list = []
         with click.progressbar(iter_list, length=self.page_num) as bar:
@@ -138,7 +148,9 @@ class ImageGrabber(object):
         zipf.close()
 
     def download(self):
-        """Download images."""
+        """
+        Download images.
+        """
         new_folder = os.path.join(self._base_path_modifier(), self.title)
         try:
             os.makedirs(new_folder, mode=0o755, exist_ok=True)
@@ -153,27 +165,3 @@ class ImageGrabber(object):
             self._download_list(url_parsed.special_url_list())
             self._download_list(url_parsed.special_url_list(sep="-"))
             self._download_list(url_parsed.special_url_list(sep="_"))
-
-
-@click.command()
-@click.option("--url", help="The starting url of the manga.")
-@click.option("--folder", default="~/Hmanga/", help="The folder to save manga.")
-@click.option("--mode", default="crawl", help="The mode for downloading")
-def downloader(url, folder, mode):
-    """The main func."""
-    path = expanduser(folder)
-    if not path.endswith(os.path.sep):
-        path += os.path.sep
-    if url:
-        manga = ImageGrabber(url, path, mode)
-    else:
-        click.echo("\nWarning:\n --url must be provided.\n")
-        return
-    if manga.valid:
-        manga.download()
-    else:
-        click.echo("The start url is not recognized.")
-
-
-if __name__ == "__main__":
-    downloader()  # pylint: disable=no-value-for-parameter
