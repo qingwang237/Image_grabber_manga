@@ -34,7 +34,7 @@ setup(
     ],
     setup_requires=['pytest-runner', 'flake8', 'pylint', 'black'],
     tests_require=[
-        'pytest', 'coverage'
+        'pytest', 'coverage', 'pytest-cov'
     ],
     entry_points={"console_scripts": ["wgrabber=wgrabber.__main__:main",]},
 )

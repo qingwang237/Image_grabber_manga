@@ -26,7 +26,7 @@ pyflakes==2.2.0
 pylint==2.5.2
 pyparsing==2.1.10
 pytest==5.4.3
-pytest-cov==2.9.0
+pytest-cov==2.10.0
 regex==2020.5.14
 requests==2.20.0
 six==1.14.0
