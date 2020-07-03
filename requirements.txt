@@ -5,10 +5,10 @@ beautifulsoup4==4.5.3
 black==19.10b0
 certifi==2019.11.28
 chardet==3.0.4
-Click==7.1.2
+click==7.1.2
 coverage==5.1
 entrypoints==0.3
-flake8==3.8.2
+flake8==3.8.3
 idna==2.7
 isort==4.3.21
 lazy-object-proxy==1.4.3
@@ -23,7 +23,7 @@ pluggy==0.13.1
 py==1.8.1
 pycodestyle==2.6.0
 pyflakes==2.2.0
-pylint==2.5.2
+pylint==2.5.3
 pyparsing==2.1.10
 pytest==5.4.3
 pytest-cov==2.10.0
