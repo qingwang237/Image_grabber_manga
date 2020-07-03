@@ -1,12 +1,12 @@
-from io import BytesIO
 import os
 import re
 import zipfile
+from io import BytesIO
 
 import click
-from PIL import Image
-from bs4 import BeautifulSoup
 import requests
+from bs4 import BeautifulSoup
+from PIL import Image
 
 from .url_processor import URLProcessor
 

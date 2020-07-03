@@ -6,11 +6,12 @@ import click
 from . import __version__
 from .image_grabber import ImageGrabber
 
+
 @click.command()
-@click.argument('url')
+@click.argument("url")
 @click.option("--folder", default="~/Hmanga/", help="The folder to save manga.")
 @click.option("--mode", default="crawl", help="The mode for downloading")
-@click.version_option(version=__version__, message='Wgrabber %(version)s')
+@click.version_option(version=__version__, message="Wgrabber %(version)s")
 def main(url, folder, mode):
     """
     Command line tool to download the manga from the website Wxxx.
