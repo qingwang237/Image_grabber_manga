@@ -1,4 +1,6 @@
 # 自动漫画下载器
+![Wgrabber](https://github.com/qingwang237/Image_grabber_manga/workflows/Wgrabber/badge.svg?branch=master)
+
 
 The automated images downloader.
 漫画下载
