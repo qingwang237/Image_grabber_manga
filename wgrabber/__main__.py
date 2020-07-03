@@ -10,7 +10,7 @@ from .image_grabber import ImageGrabber
 @click.option("--url", help="The starting url of the manga.")
 @click.option("--folder", default="~/Hmanga/", help="The folder to save manga.")
 @click.option("--mode", default="crawl", help="The mode for downloading")
-@click.version_option(version=__version__)
+@click.version_option(version=__version__, message='Wgrabber %(version)s')
 def main(url, folder, mode):
     """The main func."""
     path = expanduser(folder)
