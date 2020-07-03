@@ -12,7 +12,9 @@ from .image_grabber import ImageGrabber
 @click.option("--mode", default="crawl", help="The mode for downloading")
 @click.version_option(version=__version__, message='Wgrabber %(version)s')
 def main(url, folder, mode):
-    """The main func."""
+    """
+    Command line tool to download the manga from the website Wxxx.
+    """
     path = expanduser(folder)
     if not path.endswith(os.path.sep):
         path += os.path.sep
