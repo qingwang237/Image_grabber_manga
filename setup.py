@@ -29,7 +29,7 @@ setup(
         "beautifulsoup4==4.5.3",
         "requests==2.20.0",
         "lxml==4.4.2",
-        "Click==7.0",
+        "Click==7.1.2",
         "Pillow==7.0.0",
     ],
     setup_requires=['pytest-runner', 'flake8', 'pylint', 'black'],
