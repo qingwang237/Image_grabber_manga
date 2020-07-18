@@ -1,5 +1,5 @@
 {
-    "python.pythonPath": "/home/qing/.pyenv/versions/scraper/bin/python",
+    "python.pythonPath": "/home/qing/.pyenv/versions/grabber/bin/python",
     "python.formatting.provider": "black",
     "python.testing.pytestArgs": [
         "tests"
