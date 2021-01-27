@@ -18,7 +18,7 @@ more-itertools==8.3.0
 olefile==0.44
 packaging==16.8
 pathspec==0.8.0
-Pillow==7.0.0
+Pillow==7.1.0
 pluggy==0.13.1
 py==1.8.1
 pycodestyle==2.6.0
