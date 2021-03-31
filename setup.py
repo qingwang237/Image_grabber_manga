@@ -28,7 +28,7 @@ setup(
     install_requires=[
         "beautifulsoup4==4.5.3",
         "requests==2.20.0",
-        "lxml==4.6.2",
+        "lxml==4.6.3",
         "Click==7.1.2",
         "Pillow==7.1.0",
     ],
