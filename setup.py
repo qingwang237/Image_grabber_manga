@@ -30,7 +30,7 @@ setup(
         "requests==2.20.0",
         "lxml==4.9.1",
         "Click==7.1.2",
-        "Pillow==9.3.0",
+        "Pillow==10.3.0",
     ],
     setup_requires=['pytest-runner', 'flake8', 'pylint', 'black'],
     tests_require=[
