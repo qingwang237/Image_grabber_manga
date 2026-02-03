@@ -16,7 +16,7 @@ class ImageGrabber:
     the image grabber class.
     """
 
-    def __init__(self, start_url, base_path, mode):
+    def __init__(self, start_url, base_path, mode, zip_only=False):
         """
         The constructor func.
         """
@@ -24,6 +24,7 @@ class ImageGrabber:
         self.base_path = base_path
         self.base_url = "https://" + (self.url.split("/"))[-2]
         self.mode = mode
+        self.zip_only = zip_only
         self.validate()
 
     def _url_resolver(self, next_url):
@@ -143,6 +144,14 @@ class ImageGrabber:
         for img in img_list:
             zipf.write(img, compress_type=zipfile.ZIP_DEFLATED)
         zipf.close()
+
+        # Clean up individual images if zip_only is enabled
+        if self.zip_only:
+            for img in img_list:
+                try:
+                    os.remove(os.path.join(new_folder, img))
+                except OSError as e:
+                    print(f"Could not delete {img}: {e}")
 
     def download(self):
         """

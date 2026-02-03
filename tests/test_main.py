@@ -123,3 +123,37 @@ def test_main_with_all_options(mock_image_grabber):
     assert "~/manga/" not in call_args[0][1] or call_args[0][1] == "~/manga/"
     assert call_args[0][2] == "normal"
     mock_manga.download.assert_called_once()
+
+
+@patch("wgrabber.__main__.ImageGrabber")
+def test_main_with_zip_only_flag(mock_image_grabber):
+    """Test main with --zip-only flag."""
+    mock_manga = MagicMock()
+    mock_manga.valid = True
+    mock_image_grabber.return_value = mock_manga
+
+    runner = CliRunner()
+    result = runner.invoke(main, ["http://example.com/manga/123", "--zip-only"])
+
+    assert result.exit_code == 0
+    # Check that ImageGrabber was called with zip_only=True
+    call_kwargs = mock_image_grabber.call_args[1]
+    assert call_kwargs["zip_only"] is True
+    mock_manga.download.assert_called_once()
+
+
+@patch("wgrabber.__main__.ImageGrabber")
+def test_main_without_zip_only_flag(mock_image_grabber):
+    """Test main without --zip-only flag (default behavior)."""
+    mock_manga = MagicMock()
+    mock_manga.valid = True
+    mock_image_grabber.return_value = mock_manga
+
+    runner = CliRunner()
+    result = runner.invoke(main, ["http://example.com/manga/123"])
+
+    assert result.exit_code == 0
+    # Check that ImageGrabber was called with zip_only=False (default)
+    call_kwargs = mock_image_grabber.call_args[1]
+    assert call_kwargs["zip_only"] is False
+    mock_manga.download.assert_called_once()

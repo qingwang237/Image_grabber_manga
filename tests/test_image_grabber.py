@@ -625,6 +625,111 @@ class TestImageGrabberDownloadList:
         # Should not call image operations for non-200/404
         mock_img_open.assert_not_called()
 
+    @patch("wgrabber.image_grabber.os.remove")
+    @patch("wgrabber.image_grabber.os.chdir")
+    @patch("wgrabber.image_grabber.zipfile.ZipFile")
+    @patch("wgrabber.image_grabber.Image.open")
+    @patch("wgrabber.image_grabber.requests.get")
+    @patch("wgrabber.image_grabber.click.progressbar")
+    def test_download_list_with_zip_only(
+        self, mock_progressbar, mock_get, mock_img_open, mock_zipfile, mock_chdir, mock_remove
+    ):
+        """Test _download_list with zip_only=True deletes images after zipping."""
+        img = Image.new("RGB", (10, 10), color="red")
+        img_bytes = BytesIO()
+        img.save(img_bytes, format="JPEG")
+        img_bytes.seek(0)
+
+        urls = ["//img.example.com/1.jpg", "//img.example.com/2.jpg"]
+        mock_progressbar.return_value.__enter__ = Mock(return_value=urls)
+        mock_progressbar.return_value.__exit__ = Mock(return_value=False)
+
+        resp = Mock()
+        resp.status_code = 200
+        resp.content = img_bytes.getvalue()
+        mock_get.return_value = resp
+
+        mock_img = MagicMock()
+        mock_img_open.return_value = mock_img
+
+        mock_zip = MagicMock()
+        mock_zipfile.return_value = mock_zip
+
+        with patch.object(ImageGrabber, "validate"):
+            grabber = ImageGrabber(
+                "https://example.com/manga/123", "/tmp/", "crawl", zip_only=True
+            )
+            grabber.title = "Test"
+            grabber.tag = "volume"
+            grabber.subtag = "CN"
+            grabber.base_path = "/tmp/"
+            grabber.page_num = 2
+
+            grabber._download_list(urls)
+
+        # Verify images were downloaded and saved
+        assert mock_get.call_count == 2
+        assert mock_img.save.call_count == 2
+
+        # Verify zip was created
+        mock_zipfile.assert_called_once()
+        assert mock_zip.write.call_count == 2
+
+        # Verify images were deleted after zipping
+        assert mock_remove.call_count == 2
+
+    @patch("wgrabber.image_grabber.os.remove")
+    @patch("wgrabber.image_grabber.os.chdir")
+    @patch("wgrabber.image_grabber.zipfile.ZipFile")
+    @patch("wgrabber.image_grabber.Image.open")
+    @patch("wgrabber.image_grabber.requests.get")
+    @patch("wgrabber.image_grabber.click.progressbar")
+    def test_download_list_without_zip_only(
+        self, mock_progressbar, mock_get, mock_img_open, mock_zipfile, mock_chdir, mock_remove
+    ):
+        """Test _download_list with zip_only=False keeps images."""
+        img = Image.new("RGB", (10, 10), color="red")
+        img_bytes = BytesIO()
+        img.save(img_bytes, format="JPEG")
+        img_bytes.seek(0)
+
+        urls = ["//img.example.com/1.jpg"]
+        mock_progressbar.return_value.__enter__ = Mock(return_value=urls)
+        mock_progressbar.return_value.__exit__ = Mock(return_value=False)
+
+        resp = Mock()
+        resp.status_code = 200
+        resp.content = img_bytes.getvalue()
+        mock_get.return_value = resp
+
+        mock_img = MagicMock()
+        mock_img_open.return_value = mock_img
+
+        mock_zip = MagicMock()
+        mock_zipfile.return_value = mock_zip
+
+        with patch.object(ImageGrabber, "validate"):
+            grabber = ImageGrabber(
+                "https://example.com/manga/123", "/tmp/", "crawl", zip_only=False
+            )
+            grabber.title = "Test"
+            grabber.tag = "volume"
+            grabber.subtag = "CN"
+            grabber.base_path = "/tmp/"
+            grabber.page_num = 1
+
+            grabber._download_list(urls)
+
+        # Verify images were downloaded
+        assert mock_get.call_count == 1
+        assert mock_img.save.call_count == 1
+
+        # Verify zip was created
+        mock_zipfile.assert_called_once()
+
+        # Verify images were NOT deleted
+        mock_remove.assert_not_called()
+
 
 class TestImageGrabberDownload:
     """Tests for download-related methods."""
