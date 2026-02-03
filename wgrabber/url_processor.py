@@ -21,7 +21,7 @@ class URLProcessor:
         """
         Constructor method.
         """
-        super(URLProcessor, self).__init__()
+        super().__init__()
         self.pnum = page_num
         self.data_url = data_url
         self.template = self._generate_template(self.data_url)
@@ -48,10 +48,7 @@ class URLProcessor:
         Generate normal url list for iteration.
         """
         for i in range(0, self.pnum + 1):
-            rep_dict = {
-                "var%i" % t: str(i).zfill(self.n_digits[t])
-                for t in range(self.num_vars)
-            }
+            rep_dict = {"var%i" % t: str(i).zfill(self.n_digits[t]) for t in range(self.num_vars)}
             yield self.template.format(**rep_dict)
 
     def special_url_list(self, sep=""):

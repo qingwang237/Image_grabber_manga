@@ -107,10 +107,7 @@ class ImageGrabber:
             result = requests.get(url)
             soup = BeautifulSoup(result.content, "lxml")
             img_url = soup.find("span", {"id": "imgarea"}).find("a").find("img")["src"]
-            url = (
-                self.base_url
-                + soup.find("div", {"class": "newpage"}).find_all("a")[-1]["href"]
-            )
+            url = self.base_url + soup.find("div", {"class": "newpage"}).find_all("a")[-1]["href"]
             yield img_url
 
     def _download_list(self, iter_list):
