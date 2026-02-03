@@ -11,7 +11,7 @@ from PIL import Image
 from .url_processor import URLProcessor
 
 
-class ImageGrabber(object):
+class ImageGrabber:
     """
     the image grabber class.
     """

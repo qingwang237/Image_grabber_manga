@@ -7,6 +7,40 @@ The automated images downloader.
 
 ## Getting Started
 
-To get started, create a virtual env and install the packages in the requirements.txt.
-Then in the commandline, run
-python -m wgrabber http://www.xxxx.org/photos-index-aid-37288.html
+This project uses [uv](https://github.com/astral-sh/uv) for dependency management.
+
+### Installation
+
+```bash
+# Install dependencies
+uv sync
+
+# Or install with development tools (includes ruff linter and pytest)
+uv sync --dev
+```
+
+### Usage
+
+```bash
+# Run the tool
+uv run wgrabber http://www.xxxx.org/photos-index-aid-37288.html
+
+# Or with options
+uv run wgrabber http://www.xxxx.org/photos-index-aid-37288.html --folder ~/manga/ --mode crawl
+
+# See all available options
+uv run wgrabber --help
+```
+
+### Development
+
+```bash
+# Run tests
+uv run pytest
+
+# Run linter
+uv run ruff check .
+
+# Format code
+uv run ruff format .
+```

@@ -12,7 +12,7 @@ CAP_LIST = ["A", "B", "C", "D", "E", "F", "G"]
 NUM_LIST = ["0", "1", "2", "3", "4", "5", "6"]
 
 
-class URLProcessor(object):
+class URLProcessor:
     """
     Class for URLProcessor.
     """
