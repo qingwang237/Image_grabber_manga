@@ -148,18 +148,22 @@ class ImageGrabber:
             imgarea_span = soup.find("span", attrs={"id": "imgarea"})
             if imgarea_span is None:
                 continue
+            imgarea_span = cast(Tag, imgarea_span)
             img_link = imgarea_span.find("a")
             if img_link is None:
                 continue
+            img_link = cast(Tag, img_link)
             img_tag = img_link.find("img")
             if img_tag is None:
                 continue
+            img_tag = cast(Tag, img_tag)
             img_url = img_tag.get("src")
             if img_url is None:
                 continue
             newpage_div = soup.find("div", attrs={"class": "newpage"})
             if newpage_div is None:
                 continue
+            newpage_div = cast(Tag, newpage_div)
             next_links = newpage_div.find_all("a")
             if not next_links:
                 continue
