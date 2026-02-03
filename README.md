@@ -28,6 +28,9 @@ uv run wgrabber http://www.xxxx.org/photos-index-aid-37288.html
 # Or with options
 uv run wgrabber http://www.xxxx.org/photos-index-aid-37288.html --folder ~/manga/ --mode crawl
 
+# To only keep the cbz file and delete all images
+uv run python -m wgrabber --zip-only http://www.xxxx.org/photos-index-aid-37288.html
+
 # See all available options
 uv run wgrabber --help
 ```
