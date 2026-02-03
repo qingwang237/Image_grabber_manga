@@ -16,13 +16,14 @@ def create_mock_soup_for_validation(title="Test Manga", tag="單行本", subtag=
 
     # Mock h2 for title
     h2_tag = MagicMock()
+    h2_tag.string = MagicMock()
     h2_tag.string.strip.return_value = title
     soup.find_all.return_value = [h2_tag]
 
     # Mock pic_box elements
     pic_box = MagicMock()
     link = MagicMock()
-    link.__getitem__.return_value = "/page.html"
+    link.get.return_value = "/page.html"
     pic_box.find.return_value = link
 
     # Mock find for pic_box (both indexed and direct)
@@ -30,7 +31,7 @@ def create_mock_soup_for_validation(title="Test Manga", tag="單行本", subtag=
 
     # Mock label for page count
     label = MagicMock()
-    label.string = f"頁數: {pages}頁"
+    label.get_text.return_value = f"頁數: {pages}頁"
 
     # Mock bread crumb for tags
     bread = MagicMock()
@@ -113,7 +114,7 @@ class TestImageGrabberBasics:
 
         mock_soup = MagicMock()
         mock_img = MagicMock()
-        mock_img.__getitem__.return_value = "//img.example.com/image.jpg"
+        mock_img.get.return_value = "//img.example.com/image.jpg"
         mock_soup.find.return_value = mock_img
         mock_bs.return_value = mock_soup
 
@@ -143,7 +144,7 @@ class TestImageGrabberValidation:
         soup1 = create_mock_soup_for_validation("Test Volume", "單行本", "漢化", 10)
         soup2 = MagicMock()
         img_tag = MagicMock()
-        img_tag.__getitem__.return_value = "//img.example.com/data.jpg"
+        img_tag.get.return_value = "//img.example.com/data.jpg"
         soup2.find.return_value = img_tag
 
         mock_bs.side_effect = [soup1, soup2]
@@ -168,7 +169,7 @@ class TestImageGrabberValidation:
         soup1 = create_mock_soup_for_validation("Short Manga", "雜誌&短篇", "日語", 5)
         soup2 = MagicMock()
         img_tag = MagicMock()
-        img_tag.__getitem__.return_value = "//img.example.com/data.jpg"
+        img_tag.get.return_value = "//img.example.com/data.jpg"
         soup2.find.return_value = img_tag
 
         mock_bs.side_effect = [soup1, soup2]
@@ -191,7 +192,7 @@ class TestImageGrabberValidation:
         soup1 = create_mock_soup_for_validation("Doujin", "同人誌", "CG畫集", 20)
         soup2 = MagicMock()
         img_tag = MagicMock()
-        img_tag.__getitem__.return_value = "//img.example.com/data.jpg"
+        img_tag.get.return_value = "//img.example.com/data.jpg"
         soup2.find.return_value = img_tag
 
         mock_bs.side_effect = [soup1, soup2]
@@ -214,7 +215,7 @@ class TestImageGrabberValidation:
         soup1 = create_mock_soup_for_validation("Cosplay", "單行本", "Cosplay", 8)
         soup2 = MagicMock()
         img_tag = MagicMock()
-        img_tag.__getitem__.return_value = "//img.example.com/data.jpg"
+        img_tag.get.return_value = "//img.example.com/data.jpg"
         soup2.find.return_value = img_tag
 
         mock_bs.side_effect = [soup1, soup2]
@@ -236,7 +237,7 @@ class TestImageGrabberValidation:
         soup1 = create_mock_soup_for_validation("Unknown", "Other", "Other Lang", 3)
         soup2 = MagicMock()
         img_tag = MagicMock()
-        img_tag.__getitem__.return_value = "//img.example.com/data.jpg"
+        img_tag.get.return_value = "//img.example.com/data.jpg"
         soup2.find.return_value = img_tag
 
         mock_bs.side_effect = [soup1, soup2]
@@ -260,18 +261,19 @@ class TestImageGrabberValidation:
 
         # Mock h2 for title
         h2_tag = MagicMock()
+        h2_tag.string = MagicMock()
         h2_tag.string.strip.return_value = "Test"
         soup.find_all.return_value = [h2_tag]
 
         # Mock pic_box
         pic_box = MagicMock()
         link = MagicMock()
-        link.__getitem__.return_value = "/page.html"
+        link.get.return_value = "/page.html"
         pic_box.find.return_value = link
 
         # Mock label for pages
         label = MagicMock()
-        label.string = "頁數: 5頁"
+        label.get_text.return_value = "頁數: 5頁"
 
         # Mock bread with only 2 tags (will cause IndexError on tags[2])
         bread = MagicMock()
@@ -294,7 +296,7 @@ class TestImageGrabberValidation:
 
         soup2 = MagicMock()
         img_tag = MagicMock()
-        img_tag.__getitem__.return_value = "//img.example.com/data.jpg"
+        img_tag.get.return_value = "//img.example.com/data.jpg"
         soup2.find.return_value = img_tag
 
         mock_bs.side_effect = [soup, soup2]
@@ -362,7 +364,7 @@ class TestImageGrabberPageCrawl:
 
             # Mock imgarea -> a -> img
             img = MagicMock()
-            img.__getitem__.return_value = f"//img.example.com/page{i}.jpg"
+            img.get.return_value = f"//img.example.com/page{i}.jpg"
 
             a_tag = MagicMock()
             a_tag.find.return_value = img
@@ -373,7 +375,7 @@ class TestImageGrabberPageCrawl:
             # Mock newpage -> links
             newpage = MagicMock()
             next_link = MagicMock()
-            next_link.__getitem__.return_value = f"/page{i + 1}"
+            next_link.get.return_value = f"/page{i + 1}"
             newpage.find_all.return_value = [MagicMock(), next_link]
 
             def create_find(imgarea_val, newpage_val):

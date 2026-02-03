@@ -36,9 +36,9 @@ class URLProcessor:
         self.n_digits = [len(s) for s in str_to_replaced]
         rep = {}
         for index, item in enumerate(str_to_replaced):
-            rep[item] = "{var%i}" % index
+            rep[item] = f"{{var{index}}}"
         # use these three lines to do the replacement
-        rep = dict((re.escape(k), v) for k, v in rep.items())
+        rep = {re.escape(k): v for k, v in rep.items()}
         pattern = re.compile("|".join(rep.keys()))
         text = pattern.sub(lambda m: rep[re.escape(m.group(0))], url)
         return text
@@ -48,7 +48,7 @@ class URLProcessor:
         Generate normal url list for iteration.
         """
         for i in range(0, self.pnum + 1):
-            rep_dict = {"var%i" % t: str(i).zfill(self.n_digits[t]) for t in range(self.num_vars)}
+            rep_dict = {f"var{t}": str(i).zfill(self.n_digits[t]) for t in range(self.num_vars)}
             yield self.template.format(**rep_dict)
 
     def special_url_list(self, sep=""):
@@ -59,14 +59,14 @@ class URLProcessor:
         for c in sp_c_list:
             if sep:
                 rep_dict = {
-                    "var%i" % t: "0".zfill(self.n_digits[t])
+                    f"var{t}": "0".zfill(self.n_digits[t])
                     if t < self.num_vars - 1
                     else "0".zfill(self.n_digits[t]) + sep + c
                     for t in range(self.num_vars)
                 }
             else:
                 rep_dict = {
-                    "var%i" % t: "0".zfill(self.n_digits[t])
+                    f"var{t}": "0".zfill(self.n_digits[t])
                     if t < self.num_vars - 1
                     else "0".zfill(self.n_digits[t]) + c
                     for t in range(self.num_vars)

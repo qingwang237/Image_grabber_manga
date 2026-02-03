@@ -2,10 +2,11 @@ import os
 import re
 import zipfile
 from io import BytesIO
+from typing import cast
 
 import click
 import requests
-from bs4 import BeautifulSoup
+from bs4 import BeautifulSoup, Tag
 from PIL import Image
 
 from .url_processor import URLProcessor
@@ -34,7 +35,13 @@ class ImageGrabber:
         url = self.base_url + next_url
         r = requests.get(url)
         soup = BeautifulSoup(r.content, "lxml")
-        src = soup.find("img", {"id": "picarea"})["src"]
+        img_tag = soup.find("img", attrs={"id": "picarea"})
+        if img_tag is None:
+            raise ValueError(f"Could not find image tag in {url}")
+        img_tag = cast(Tag, img_tag)
+        src = img_tag.get("src")
+        if src is None:
+            raise ValueError(f"Image tag has no src attribute in {url}")
         return src
 
     def validate(self):
@@ -46,21 +53,52 @@ class ImageGrabber:
             if self.result.status_code == 200:
                 soup = BeautifulSoup(self.result.content, "lxml")
                 try:
-                    self.title = soup.find_all("h2")[0].string.strip()
+                    h2_tags = soup.find_all("h2")
+                    if not h2_tags or h2_tags[0].string is None:
+                        raise IndexError("No title found")
+                    self.title = h2_tags[0].string.strip()
                 except IndexError:
                     print("Please make sure the url is correct.")
                     self.valid = False
                     return
-                link = soup.find_all("div", {"class": "pic_box"})[-1].find("a")
+                link = soup.find_all("div", attrs={"class": "pic_box"})[-1].find("a")
                 # also save the first link
-                self.img_link = soup.find("div", {"class": "pic_box"}).find("a")["href"]
+                first_pic_box = soup.find("div", attrs={"class": "pic_box"})
+                if first_pic_box is None:
+                    print("Cannot find pic_box div.")
+                    self.valid = False
+                    return
+                first_link = first_pic_box.find("a")
+                if first_link is None:
+                    print("Cannot find link in pic_box.")
+                    self.valid = False
+                    return
+                first_link = cast(Tag, first_link)
+                href = first_link.get("href")
+                if href is None:
+                    print("Link has no href attribute.")
+                    self.valid = False
+                    return
+                self.img_link = href
                 if link:
                     self.data_url = self._url_resolver(link["href"])
                     patten = re.compile(r"頁數")
-                    pages = re.findall(r"\d+", soup.find("label", text=patten).string)
+                    label_tag = soup.find("label", text=patten)
+                    if label_tag is None:
+                        print("Cannot find page number.")
+                        self.valid = False
+                        return
+                    label_string = label_tag.get_text() if hasattr(label_tag, "get_text") else str(label_tag)
+                    pages = re.findall(r"\d+", label_string)
                     self.page_num = int(pages[0])
                     # find the catagory and lang tags
-                    tags = soup.find("div", {"class": "png bread"}).find_all("a")
+                    bread_div = soup.find("div", attrs={"class": "png bread"})
+                    if bread_div is None or not hasattr(bread_div, "find_all"):
+                        print("Cannot find breadcrumb div.")
+                        self.valid = False
+                        return
+                    bread_div = cast(Tag, bread_div)
+                    tags = bread_div.find_all("a")
                     if tags[1].string == "單行本":
                         self.tag = "volume"
                     elif tags[1].string == "雜誌&短篇":
@@ -107,8 +145,25 @@ class ImageGrabber:
         for _i in range(self.page_num):
             result = requests.get(url)
             soup = BeautifulSoup(result.content, "lxml")
-            img_url = soup.find("span", {"id": "imgarea"}).find("a").find("img")["src"]
-            url = self.base_url + soup.find("div", {"class": "newpage"}).find_all("a")[-1]["href"]
+            imgarea_span = soup.find("span", attrs={"id": "imgarea"})
+            if imgarea_span is None:
+                continue
+            img_link = imgarea_span.find("a")
+            if img_link is None:
+                continue
+            img_tag = img_link.find("img")
+            if img_tag is None:
+                continue
+            img_url = img_tag.get("src")
+            if img_url is None:
+                continue
+            newpage_div = soup.find("div", attrs={"class": "newpage"})
+            if newpage_div is None:
+                continue
+            next_links = newpage_div.find_all("a")
+            if not next_links:
+                continue
+            url = self.base_url + next_links[-1]["href"]
             yield img_url
 
     def _download_list(self, iter_list):
