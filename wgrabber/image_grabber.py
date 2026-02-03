@@ -105,6 +105,12 @@ class ImageGrabber:
                         self.tag = "short"
                     elif tags[1].string == "同人誌":
                         self.tag = "doujin"
+                    elif tags[1].string == "AI圖集":
+                        self.tag = "AI"
+                    elif tags[1].string == "3D&漫畫":
+                        self.tag = "3D"
+                    elif tags[1].string == "寫真&Cosplay":
+                        self.tag = "photo"
                     else:
                         self.tag = "unknown"
                     try:
