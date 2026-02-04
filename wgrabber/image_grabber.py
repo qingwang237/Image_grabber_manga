@@ -111,6 +111,8 @@ class ImageGrabber:
                         self.tag = "3D"
                     elif tags[1].string == "寫真&Cosplay":
                         self.tag = "photo"
+                    elif tags[1].string == "韓漫":
+                        self.tag = "Korean"
                     else:
                         self.tag = "unknown"
                     try:
@@ -124,6 +126,8 @@ class ImageGrabber:
                             self.subtag = "COS"
                         elif tags[2].string == "English":
                             self.subtag = "EN"
+                        elif tags[2].string == "生肉":
+                            self.subtag = "Other"
                         else:
                             self.subtag = "unknown"
                     except IndexError:
