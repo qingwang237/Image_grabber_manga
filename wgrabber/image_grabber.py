@@ -122,6 +122,8 @@ class ImageGrabber:
                             self.subtag = "CG"
                         elif tags[2].string == "Cosplay":
                             self.subtag = "COS"
+                        elif tags[2].string == "English":
+                            self.subtag = "EN"
                         else:
                             self.subtag = "unknown"
                     except IndexError:
