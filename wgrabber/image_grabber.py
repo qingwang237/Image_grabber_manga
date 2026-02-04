@@ -99,37 +99,30 @@ class ImageGrabber:
                         return
                     bread_div = cast(Tag, bread_div)
                     tags = bread_div.find_all("a")
-                    if tags[1].string == "單行本":
-                        self.tag = "volume"
-                    elif tags[1].string == "雜誌&短篇":
-                        self.tag = "short"
-                    elif tags[1].string == "同人誌":
-                        self.tag = "doujin"
-                    elif tags[1].string == "AI圖集":
-                        self.tag = "AI"
-                    elif tags[1].string == "3D&漫畫":
-                        self.tag = "3D"
-                    elif tags[1].string == "寫真&Cosplay":
-                        self.tag = "photo"
-                    elif tags[1].string == "韓漫":
-                        self.tag = "Korean"
-                    else:
-                        self.tag = "unknown"
+
+                    # Category mapping - add new categories here
+                    category_mapping = {
+                        "單行本": "volume",
+                        "雜誌&短篇": "short",
+                        "同人誌": "doujin",
+                        "AI圖集": "AI",
+                        "3D&漫畫": "3D",
+                        "寫真&Cosplay": "photo",
+                        "韓漫": "Korean",
+                    }
+                    self.tag = category_mapping.get(tags[1].string, "unknown")
+
+                    # Language/type mapping - add new languages here
+                    language_mapping = {
+                        "漢化": "CN",
+                        "日語": "JP",
+                        "CG畫集": "CG",
+                        "Cosplay": "COS",
+                        "English": "EN",
+                        "生肉": "Other",
+                    }
                     try:
-                        if tags[2].string == "漢化":
-                            self.subtag = "CN"
-                        elif tags[2].string == "日語":
-                            self.subtag = "JP"
-                        elif tags[2].string == "CG畫集":
-                            self.subtag = "CG"
-                        elif tags[2].string == "Cosplay":
-                            self.subtag = "COS"
-                        elif tags[2].string == "English":
-                            self.subtag = "EN"
-                        elif tags[2].string == "生肉":
-                            self.subtag = "Other"
-                        else:
-                            self.subtag = "unknown"
+                        self.subtag = language_mapping.get(tags[2].string, "unknown")
                     except IndexError:
                         self.subtag = "unknown"
                     self.valid = True
