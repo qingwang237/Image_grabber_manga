@@ -1,4 +1,5 @@
 import os
+import random
 import re
 import time
 import zipfile
@@ -37,6 +38,7 @@ class ImageGrabber:
         self.base_url = "https://" + (self.url.split("/"))[-2]
         self.mode = mode
         self.zip_only = zip_only
+        self.consecutive_failures = 0  # Track consecutive security check failures
         # Create cloudscraper session to bypass Cloudflare protection
         # Allow injecting a custom scraper for testing
         if scraper is None:
@@ -46,6 +48,13 @@ class ImageGrabber:
         else:
             self.scraper = scraper
         self.validate()
+
+    def _refresh_scraper(self):
+        """Recreate the scraper session to get fresh cookies/session."""
+        print("\nRefreshing session to bypass security checks...")
+        self.scraper = cloudscraper.create_scraper(
+            browser={"browser": "chrome", "platform": "windows", "mobile": False}
+        )
 
     def _url_resolver(self, next_url):
         """
@@ -198,17 +207,26 @@ class ImageGrabber:
                 try:
                     result = self.scraper.get(url, timeout=30)
                     if result.status_code == 200:
+                        self.consecutive_failures = 0  # Reset failure counter
                         break
                     elif result.status_code in (403, 503, 429):
-                        wait_time = (2**attempt) * 2
+                        self.consecutive_failures += 1
+                        
+                        # Exponentially longer waits: 10s, 30s, 60s
+                        wait_time = min(10 * (3 ** attempt), 60)
+                        
                         if attempt < max_retries - 1:
                             print(
-                                f"\nPage {page_num + 1}: Security check detected. Waiting {wait_time}s..."
+                                f"\nPage {page_num + 1}: Security check detected (attempt {attempt + 1}). Waiting {wait_time}s..."
                             )
                             time.sleep(wait_time)
+                            
+                            # Refresh session after 2nd attempt
+                            if attempt == 1 and self.consecutive_failures > 2:
+                                self._refresh_scraper()
                         else:
                             print(
-                                f"\nPage {page_num + 1}: Failed to fetch after {max_retries} attempts"
+                                f"\nPage {page_num + 1}: Failed after {max_retries} attempts. Skipping page."
                             )
                             continue
                     else:
@@ -217,7 +235,7 @@ class ImageGrabber:
                 except Exception as e:
                     if attempt < max_retries - 1:
                         print(f"\nError fetching page {page_num + 1}: {e}. Retrying...")
-                        time.sleep(2)
+                        time.sleep(5)
                     else:
                         print(f"\nFailed to fetch page {page_num + 1}: {e}")
                         continue
@@ -225,9 +243,10 @@ class ImageGrabber:
             if result is None or result.status_code != 200:
                 continue
 
-            # Add small delay between page requests
+            # Random delay between page requests (1-3 seconds) to appear more human
             if page_num > 0:
-                time.sleep(0.3)
+                delay = random.uniform(1.0, 3.0)
+                time.sleep(delay)
 
             soup = BeautifulSoup(result.content, "lxml")
             imgarea_span = soup.find("span", attrs={"id": "imgarea"})
@@ -272,6 +291,7 @@ class ImageGrabber:
 
                 # Success
                 if r.status_code == 200:
+                    self.consecutive_failures = 0
                     return r
 
                 # Not found - try alternate extension
@@ -280,16 +300,24 @@ class ImageGrabber:
 
                 # Security check or rate limiting
                 elif r.status_code in (403, 503, 429):
-                    wait_time = (2**attempt) * 2  # Exponential backoff: 2s, 4s, 8s
+                    self.consecutive_failures += 1
+                    # Much longer waits: 15s, 45s, 90s
+                    wait_time = min(15 * (3 ** attempt), 90)
+                    
                     if attempt < max_retries - 1:
                         print(
-                            f"\nSecurity check detected (status {r.status_code}). Waiting {wait_time}s before retry {attempt + 1}/{max_retries}..."
+                            f"\nSecurity check (status {r.status_code}, attempt {attempt + 1}). Waiting {wait_time}s..."
                         )
                         time.sleep(wait_time)
+                        
+                        # Refresh session if we've had multiple failures
+                        if self.consecutive_failures > 3:
+                            self._refresh_scraper()
+                            self.consecutive_failures = 0
                         continue
                     else:
                         print(
-                            f"\nFailed after {max_retries} attempts. Security check may require manual intervention."
+                            f"\nFailed after {max_retries} attempts. Skipping this image."
                         )
                         return None
 
@@ -301,7 +329,7 @@ class ImageGrabber:
             except Exception as e:
                 if attempt < max_retries - 1:
                     print(f"\nError downloading: {e}. Retrying...")
-                    time.sleep(2)
+                    time.sleep(5)
                 else:
                     print(f"\nFailed to download {file_url}: {e}")
                     return None
@@ -318,9 +346,10 @@ class ImageGrabber:
 
         with click.progressbar(iter_list, length=self.page_num) as bar:
             for index, url in enumerate(bar):
-                # Rate limiting: small delay between requests to avoid triggering security checks
+                # Rate limiting: random delay between requests (1-2 seconds) to appear more human
                 if index > 0:
-                    time.sleep(0.5)  # 500ms delay between images
+                    delay = random.uniform(1.0, 2.5)
+                    time.sleep(delay)
 
                 file_url = "https:" + url
                 r = self._download_image_with_retry(file_url)
