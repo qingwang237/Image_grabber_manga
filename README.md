@@ -1,6 +1,6 @@
 # 自动漫画下载器
 
-![Wgrabber](https://github.com/qingwang237/Image_grabber_manga/workflows/Wgrabber/badge.svg?branch=master)
+![CI Status](https://github.com/qingwang237/Image_grabber_manga/workflows/CI/badge.svg)
 
 The automated images downloader.
 漫画下载
@@ -38,12 +38,16 @@ uv run wgrabber --help
 ### Development
 
 ```bash
-# Run tests
+# Using Makefile (recommended)
+make test          # Run tests
+make lint          # Run linter
+make format        # Format code
+make check         # Run both lint and format check
+make fix           # Auto-fix issues and format
+make help          # Show all available commands
+
+# Or using uv directly
 uv run pytest
-
-# Run linter
 uv run ruff check .
-
-# Format code
 uv run ruff format .
 ```
