@@ -78,6 +78,7 @@ addopts = "--cov=wgrabber --cov-report=term-missing"
 [dependency-groups]
 dev = [
     "pytest>=8.3.5",
+    "pytest-cov>=7.0.0",
     "ruff>=0.15.0",
     "types-beautifulsoup4>=4.12.0.20241020",
     "types-requests>=2.32.0.20241016",
