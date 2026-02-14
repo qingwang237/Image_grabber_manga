@@ -28,11 +28,7 @@ console = Console()
 
 
 class AsyncCloudScraper(cloudscraper.CloudScraper):
-    """Async wrapper for CloudScraper using aiohttp."""
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.aio_session = None
+    """Async wrapper for CloudScraper using thread pool executor."""
 
     async def get_async(self, url, **kwargs):
         """
@@ -41,15 +37,14 @@ class AsyncCloudScraper(cloudscraper.CloudScraper):
         """
         # Run the sync cloudscraper.get() in an executor to not block event loop
         # This properly handles Cloudflare challenges
-        loop = asyncio.get_event_loop()
+        loop = asyncio.get_running_loop()
         response = await loop.run_in_executor(None, lambda: self.get(url, **kwargs))
         return response
 
-    async def close(self):
-        """Close the aiohttp session."""
-        if self.aio_session:
-            await self.aio_session.close()
-            self.aio_session = None
+    def close(self):
+        """Close the scraper session."""
+        # CloudScraper cleanup is handled by its parent class
+        super().close()
 
 
 class ImageGrabber:
@@ -72,6 +67,7 @@ class ImageGrabber:
         self.zip_only = zip_only
         self.disable_delays = disable_delays  # Allow disabling delays for tests
         self.consecutive_failures = 0  # Track consecutive security check failures
+        self._failures_lock = asyncio.Lock()  # Protect consecutive_failures from race conditions
 
         # Adaptive delay mechanism
         self.current_delay = 3.0  # Start with 3 second base delay
@@ -95,16 +91,23 @@ class ImageGrabber:
     async def _close_scraper(self):
         """Close the scraper session if we own it."""
         if self._own_scraper and hasattr(self.scraper, "close"):
-            await self.scraper.close()
+            self.scraper.close()
 
     async def _refresh_scraper(self):
         """Recreate the scraper session to get fresh cookies/session."""
         console.print("[yellow]🔄 Refreshing session to bypass security checks...[/yellow]")
-        if self._own_scraper:
-            await self.scraper.close()
+        old_scraper = self.scraper
+        owned_before = self._own_scraper
+
+        # Create a new scraper that is now owned by this instance
         self.scraper = AsyncCloudScraper(
             browser={"browser": "chrome", "platform": "windows", "mobile": False}
         )
+        self._own_scraper = True
+
+        # Clean up the previous scraper only if we owned it
+        if owned_before and old_scraper is not None and old_scraper is not self.scraper:
+            old_scraper.close()
 
     async def _url_resolver(self, next_url):
         """
@@ -118,6 +121,8 @@ class ImageGrabber:
             try:
                 r = await self.scraper.get_async(url)
                 if r.status_code == 200:
+                    async with self._failures_lock:
+                        self.consecutive_failures = 0
                     break
                 elif r.status_code in (403, 503, 429):
                     wait_time = (2**attempt) * 2
@@ -302,7 +307,8 @@ class ImageGrabber:
                 try:
                     result = await self.scraper.get_async(url)
                     if result.status_code == 200:
-                        self.consecutive_failures = 0  # Reset failure counter
+                        async with self._failures_lock:
+                            self.consecutive_failures = 0  # Reset failure counter
                         self.success_count += 1
 
                         # Gradually decrease delay after consistent success (every 5 successful pages)
@@ -312,7 +318,8 @@ class ImageGrabber:
 
                         break
                     elif result.status_code in (403, 503, 429):
-                        self.consecutive_failures += 1
+                        async with self._failures_lock:
+                            self.consecutive_failures += 1
                         self.success_count = 0  # Reset success counter
 
                         # Increase delay for future requests
@@ -328,7 +335,9 @@ class ImageGrabber:
                             await asyncio.sleep(wait_time)
 
                             # Refresh session after 2nd attempt
-                            if attempt == 1 and self.consecutive_failures > 2:
+                            async with self._failures_lock:
+                                should_refresh = self.consecutive_failures > 2
+                            if attempt == 1 and should_refresh:
                                 await self._refresh_scraper()
                         else:
                             console.print(
@@ -396,7 +405,8 @@ class ImageGrabber:
 
                 # Success
                 if r.status_code == 200:
-                    self.consecutive_failures = 0
+                    async with self._failures_lock:
+                        self.consecutive_failures = 0
                     return r
 
                 # Not found - try alternate extension
@@ -405,7 +415,9 @@ class ImageGrabber:
 
                 # Security check or rate limiting
                 elif r.status_code in (403, 503, 429):
-                    self.consecutive_failures += 1
+                    async with self._failures_lock:
+                        self.consecutive_failures += 1
+                        current_failures = self.consecutive_failures
                     # Much longer waits: 15s, 45s, 90s
                     wait_time = min(15 * (3**attempt), 90)
 
@@ -416,9 +428,10 @@ class ImageGrabber:
                         await asyncio.sleep(wait_time)
 
                         # Refresh session if we've had multiple failures
-                        if self.consecutive_failures > 3:
+                        if current_failures > 3:
                             await self._refresh_scraper()
-                            self.consecutive_failures = 0
+                            async with self._failures_lock:
+                                self.consecutive_failures = 0
                         continue
                     else:
                         console.print(
@@ -483,7 +496,7 @@ class ImageGrabber:
             img_name = f"{index}.{effective_extension}"
             try:
                 # Run PIL operations in thread pool to avoid blocking
-                loop = asyncio.get_event_loop()
+                loop = asyncio.get_running_loop()
                 await loop.run_in_executor(
                     None,
                     lambda: Image.open(BytesIO(r.content)).save(os.path.join(new_folder, img_name)),
@@ -543,8 +556,24 @@ class ImageGrabber:
         # Use a semaphore to limit concurrent downloads (max 3 at a time)
         semaphore = asyncio.Semaphore(3)
 
+        # Shared rate limiter to avoid clustered requests across concurrent tasks
+        rate_lock = asyncio.Lock()
+        last_request_time = [0.0]  # Use list to allow mutation in nested function
+
         async def download_with_semaphore(index, url):
             async with semaphore:
+                # Global rate limiting across all download tasks
+                async with rate_lock:
+                    loop = asyncio.get_running_loop()
+                    now = loop.time()
+                    min_interval = max(self.current_delay, 0.0) if not self.disable_delays else 0.0
+                    if last_request_time[0] > 0.0 and min_interval > 0.0:
+                        elapsed = now - last_request_time[0]
+                        wait_time = min_interval - elapsed
+                        if wait_time > 0:
+                            await asyncio.sleep(wait_time)
+                    # Update last_request_time to the moment we start this download
+                    last_request_time[0] = loop.time()
                 return await self._download_single_image(index, url, new_folder)
 
         # Download concurrently with rich progress bar
@@ -603,19 +632,30 @@ class ImageGrabber:
                 )
 
         # Sort img_list by index to maintain order for zip
-        img_list.sort(key=lambda x: int(x.split(".")[0]))
+        def _safe_sort_key(filename: str):
+            # Extract the part before the first dot and try to interpret it as an integer.
+            # If this fails (no dot or non-numeric prefix), place the file at the end.
+            name, _sep, _ext = filename.partition(".")
+            try:
+                return int(name)
+            except (TypeError, ValueError):
+                return float("inf")
+
+        img_list.sort(key=_safe_sort_key)
 
         # generate cbz file
         console.print("[cyan]📦 Creating CBZ archive...[/cyan]")
-        loop = asyncio.get_event_loop()
+        loop = asyncio.get_running_loop()
         await loop.run_in_executor(None, self._create_zip, new_folder, img_list)
 
     def _create_zip(self, new_folder, img_list):
         """Create zip file (run in thread pool to avoid blocking)."""
-        os.chdir(new_folder)
-        zipf = zipfile.ZipFile(f"{self.title}.cbz", "w", zipfile.ZIP_DEFLATED)
+        # Use absolute paths to avoid os.chdir which is not thread-safe
+        zip_path = os.path.join(new_folder, f"{self.title}.cbz")
+        zipf = zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED)
         for img in img_list:
-            zipf.write(img, compress_type=zipfile.ZIP_DEFLATED)
+            img_path = os.path.join(new_folder, img)
+            zipf.write(img_path, arcname=img, compress_type=zipfile.ZIP_DEFLATED)
         zipf.close()
 
         # Clean up individual images if zip_only is enabled

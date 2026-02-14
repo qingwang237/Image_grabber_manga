@@ -47,27 +47,23 @@ async def async_main(url, path, mode, zip_only):
         )
     )
 
-    try:
-        await manga.validate()
+    await manga.validate()
 
-        if manga.valid:
-            console.print(
-                Panel.fit(
-                    f"[green]✅ Validation successful![/green]\n"
-                    f"[cyan]📖 Title:[/cyan] {manga.title}\n"
-                    f"[cyan]📄 Pages:[/cyan] {manga.page_num}\n"
-                    f"[cyan]🏷️  Category:[/cyan] {manga.tag}/{manga.subtag}",
-                    title="[bold green]Ready to Download[/bold green]",
-                    border_style="green",
-                )
+    if manga.valid:
+        console.print(
+            Panel.fit(
+                f"[green]✅ Validation successful![/green]\n"
+                f"[cyan]📖 Title:[/cyan] {manga.title}\n"
+                f"[cyan]📄 Pages:[/cyan] {manga.page_num}\n"
+                f"[cyan]🏷️  Category:[/cyan] {manga.tag}/{manga.subtag}",
+                title="[bold green]Ready to Download[/bold green]",
+                border_style="green",
             )
-            await manga.download()
-            console.print("[bold green]✅ Download complete![/bold green]")
-        else:
-            console.print("[bold red]❌ The start url is not recognized.[/bold red]")
-    finally:
-        # Ensure the scraper session is properly closed
-        await manga._close_scraper()
+        )
+        await manga.download()
+        console.print("[bold green]✅ Download complete![/bold green]")
+    else:
+        console.print("[bold red]❌ The start url is not recognized.[/bold red]")
 
 
 if __name__ == "__main__":
