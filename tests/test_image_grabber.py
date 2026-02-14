@@ -214,5 +214,3 @@ class TestImageGrabberDownload:
         mock_makedirs.assert_called_once()
 
 
-if __name__ == "__main__":
-    pytest.main([__file__, "-v"])
