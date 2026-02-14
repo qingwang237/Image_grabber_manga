@@ -5,7 +5,7 @@ from io import BytesIO
 from typing import cast
 
 import click
-import requests
+import cloudscraper
 from bs4 import BeautifulSoup, Tag
 from PIL import Image
 
@@ -17,7 +17,17 @@ class ImageGrabber:
     the image grabber class.
     """
 
-    def __init__(self, start_url, base_path, mode, zip_only=False):
+    # Headers to mimic a real browser and avoid 403 Forbidden
+    HEADERS = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+        "Accept-Language": "en-US,en;q=0.5",
+        "Accept-Encoding": "gzip, deflate, br",
+        "Connection": "keep-alive",
+        "Upgrade-Insecure-Requests": "1",
+    }
+
+    def __init__(self, start_url, base_path, mode, zip_only=False, scraper=None):
         """
         The constructor func.
         """
@@ -26,6 +36,18 @@ class ImageGrabber:
         self.base_url = "https://" + (self.url.split("/"))[-2]
         self.mode = mode
         self.zip_only = zip_only
+        # Create cloudscraper session to bypass Cloudflare protection
+        # Allow injecting a custom scraper for testing
+        if scraper is None:
+            self.scraper = cloudscraper.create_scraper(
+                browser={
+                    'browser': 'chrome',
+                    'platform': 'windows',
+                    'mobile': False
+                }
+            )
+        else:
+            self.scraper = scraper
         self.validate()
 
     def _url_resolver(self, next_url):
@@ -33,7 +55,7 @@ class ImageGrabber:
         Get the data url from passed url.
         """
         url = self.base_url + next_url
-        r = requests.get(url)
+        r = self.scraper.get(url)
         soup = BeautifulSoup(r.content, "lxml")
         img_tag = soup.find("img", attrs={"id": "picarea"})
         if img_tag is None:
@@ -49,7 +71,7 @@ class ImageGrabber:
         Validate the url and content.
         """
         if self.url:
-            self.result = requests.get(self.url)
+            self.result = self.scraper.get(self.url)
             if self.result.status_code == 200:
                 soup = BeautifulSoup(self.result.content, "lxml")
                 try:
@@ -148,7 +170,7 @@ class ImageGrabber:
         """
         url = self.base_url + start
         for _i in range(self.page_num):
-            result = requests.get(url)
+            result = self.scraper.get(url)
             soup = BeautifulSoup(result.content, "lxml")
             imgarea_span = soup.find("span", attrs={"id": "imgarea"})
             if imgarea_span is None:
@@ -185,13 +207,13 @@ class ImageGrabber:
             for index, url in enumerate(bar):
                 # TODO may need better url generator since it may change.
                 file_url = "https:" + url
-                r = requests.get(file_url)
+                r = self.scraper.get(file_url)
                 if r.status_code == 404:
                     if file_url.split(".")[-1] == "jpg":
                         file_url = file_url.replace("jpg", "png")
                     else:
                         file_url = file_url.replace("png", "jpg")
-                    r = requests.get(file_url)
+                    r = self.scraper.get(file_url)
                 elif r.status_code == 200:
                     img_name = str(index) + "." + file_url.split(".")[-1]
                     try:

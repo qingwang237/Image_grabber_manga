@@ -23,6 +23,7 @@ dependencies = [
     "lxml>=5.1.0",
     "click>=8.1.0",
     "Pillow>=10.3.0",
+    "cloudscraper>=1.2.71",
 ]
 
 [project.optional-dependencies]
