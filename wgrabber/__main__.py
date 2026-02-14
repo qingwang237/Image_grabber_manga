@@ -1,3 +1,4 @@
+import asyncio
 import os
 from os.path import expanduser
 
@@ -25,11 +26,24 @@ def main(url, folder, mode, zip_only):
     path = expanduser(folder)
     if not path.endswith(os.path.sep):
         path += os.path.sep
+
+    # Run async operations
+    asyncio.run(async_main(url, path, mode, zip_only))
+
+
+async def async_main(url, path, mode, zip_only):
+    """Async main function to handle the manga download."""
     manga = ImageGrabber(url, path, mode, zip_only=zip_only)
-    if manga.valid:
-        manga.download()
-    else:
-        click.echo("The start url is not recognized.")
+    try:
+        await manga.validate()
+
+        if manga.valid:
+            await manga.download()
+        else:
+            click.echo("The start url is not recognized.")
+    finally:
+        # Ensure the scraper session is properly closed
+        await manga._close_scraper()
 
 
 if __name__ == "__main__":
