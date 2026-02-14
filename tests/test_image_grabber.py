@@ -72,8 +72,10 @@ class TestImageGrabberBasics:
     def test_invalid_url_404(self, capsys):
         """Test with invalid URL returning 404."""
         mock_scraper, _ = create_mock_scraper(status_code=404)
-        
-        grabber = ImageGrabber("https://example.com/invalid", "/tmp/manga/", "crawl", scraper=mock_scraper)
+
+        grabber = ImageGrabber(
+            "https://example.com/invalid", "/tmp/manga/", "crawl", scraper=mock_scraper
+        )
 
         assert grabber.valid is False
         captured = capsys.readouterr()
@@ -89,7 +91,9 @@ class TestImageGrabberBasics:
         mock_soup.find_all.return_value = []
         mock_bs.return_value = mock_soup
 
-        grabber = ImageGrabber("https://example.com/invalid", "/tmp/manga/", "crawl", scraper=mock_scraper)
+        grabber = ImageGrabber(
+            "https://example.com/invalid", "/tmp/manga/", "crawl", scraper=mock_scraper
+        )
 
         assert grabber.valid is False
         captured = capsys.readouterr()
@@ -99,7 +103,9 @@ class TestImageGrabberBasics:
         """Test _base_path_modifier method."""
         mock_scraper, _ = create_mock_scraper()
         with patch.object(ImageGrabber, "validate"):
-            grabber = ImageGrabber("https://example.com/manga/12345", "/tmp/manga/", "crawl", scraper=mock_scraper)
+            grabber = ImageGrabber(
+                "https://example.com/manga/12345", "/tmp/manga/", "crawl", scraper=mock_scraper
+            )
             grabber.base_path = "/tmp/manga/"
             grabber.tag = "volume"
             grabber.subtag = "CN"
@@ -120,7 +126,9 @@ class TestImageGrabberBasics:
         mock_bs.return_value = mock_soup
 
         with patch.object(ImageGrabber, "validate"):
-            grabber = ImageGrabber("https://example.com/manga/12345", "/tmp/manga/", "crawl", scraper=mock_scraper)
+            grabber = ImageGrabber(
+                "https://example.com/manga/12345", "/tmp/manga/", "crawl", scraper=mock_scraper
+            )
             grabber.base_url = "https://example.com"
 
             result = grabber._url_resolver("/page/1.html")
@@ -146,7 +154,9 @@ class TestImageGrabberValidation:
 
         mock_bs.side_effect = [soup1, soup2]
 
-        grabber = ImageGrabber("https://example.com/manga/123", "/tmp/", "crawl", scraper=mock_scraper)
+        grabber = ImageGrabber(
+            "https://example.com/manga/123", "/tmp/", "crawl", scraper=mock_scraper
+        )
 
         assert grabber.valid is True
         assert grabber.title == "Test Volume"
@@ -167,7 +177,9 @@ class TestImageGrabberValidation:
 
         mock_bs.side_effect = [soup1, soup2]
 
-        grabber = ImageGrabber("https://example.com/manga/456", "/tmp/", "crawl", scraper=mock_scraper)
+        grabber = ImageGrabber(
+            "https://example.com/manga/456", "/tmp/", "crawl", scraper=mock_scraper
+        )
 
         assert grabber.valid is True
         assert grabber.tag == "short"
@@ -186,7 +198,9 @@ class TestImageGrabberValidation:
 
         mock_bs.side_effect = [soup1, soup2]
 
-        grabber = ImageGrabber("https://example.com/manga/789", "/tmp/", "crawl", scraper=mock_scraper)
+        grabber = ImageGrabber(
+            "https://example.com/manga/789", "/tmp/", "crawl", scraper=mock_scraper
+        )
 
         assert grabber.valid is True
         assert grabber.tag == "doujin"
@@ -205,7 +219,9 @@ class TestImageGrabberValidation:
 
         mock_bs.side_effect = [soup1, soup2]
 
-        grabber = ImageGrabber("https://example.com/manga/cos", "/tmp/", "crawl", scraper=mock_scraper)
+        grabber = ImageGrabber(
+            "https://example.com/manga/cos", "/tmp/", "crawl", scraper=mock_scraper
+        )
 
         assert grabber.valid is True
         assert grabber.subtag == "COS"
@@ -223,7 +239,9 @@ class TestImageGrabberValidation:
 
         mock_bs.side_effect = [soup1, soup2]
 
-        grabber = ImageGrabber("https://example.com/manga/unk", "/tmp/", "crawl", scraper=mock_scraper)
+        grabber = ImageGrabber(
+            "https://example.com/manga/unk", "/tmp/", "crawl", scraper=mock_scraper
+        )
 
         assert grabber.valid is True
         assert grabber.tag == "unknown"
@@ -278,13 +296,15 @@ class TestImageGrabberValidation:
 
         mock_bs.side_effect = [soup, soup2]
 
-        grabber = ImageGrabber("https://example.com/manga/missing", "/tmp/", "crawl", scraper=mock_scraper)
+        grabber = ImageGrabber(
+            "https://example.com/manga/missing", "/tmp/", "crawl", scraper=mock_scraper
+        )
 
         assert grabber.valid is True
         assert grabber.subtag == "unknown"
 
     @patch("wgrabber.image_grabber.BeautifulSoup")
-    def test_validate_no_data_url_link(self, mock_bs, mock_get, capsys):
+    def test_validate_no_data_url_link(self, mock_bs, capsys):
         """Test when link for data URL is None."""
         mock_scraper, mock_response = create_mock_scraper(status_code=200, content=b"<html></html>")
 
@@ -316,7 +336,9 @@ class TestImageGrabberValidation:
 
         mock_bs.return_value = soup
 
-        grabber = ImageGrabber("https://example.com/manga/nolink", "/tmp/", "crawl", scraper=mock_scraper)
+        grabber = ImageGrabber(
+            "https://example.com/manga/nolink", "/tmp/", "crawl", scraper=mock_scraper
+        )
 
         assert grabber.valid is False
         captured = capsys.readouterr()
@@ -329,6 +351,11 @@ class TestImageGrabberPageCrawl:
     @patch("wgrabber.image_grabber.BeautifulSoup")
     def test_page_crawl(self, mock_bs):
         """Test _page_crawl method."""
+        # Create mock scraper
+        mock_scraper, _ = create_mock_scraper()
+        mock_response = Mock(content=b"<html></html>", status_code=200)
+        mock_scraper.get.return_value = mock_response
+
         # Create soups for each page
         urls = []
         for i in range(3):
@@ -363,10 +390,11 @@ class TestImageGrabberPageCrawl:
             urls.append(soup)
 
         mock_bs.side_effect = urls
-        mock_get.return_value = Mock(content=b"<html></html>")
 
         with patch.object(ImageGrabber, "validate"):
-            grabber = ImageGrabber("https://example.com/manga/123", "/tmp/", "crawl", scraper=mock_scraper)
+            grabber = ImageGrabber(
+                "https://example.com/manga/123", "/tmp/", "crawl", scraper=mock_scraper
+            )
             grabber.base_url = "https://example.com"
             grabber.page_num = 3
 
@@ -375,7 +403,7 @@ class TestImageGrabberPageCrawl:
         assert len(results) == 3
         assert all("page" in url and ".jpg" in url for url in results)
         # Verify requests were made
-        assert mock_get.call_count == 3
+        assert mock_scraper.get.call_count == 3
 
 
 class TestImageGrabberDownloadList:
@@ -385,10 +413,11 @@ class TestImageGrabberDownloadList:
     @patch("wgrabber.image_grabber.zipfile.ZipFile")
     @patch("wgrabber.image_grabber.Image.open")
     @patch("wgrabber.image_grabber.click.progressbar")
-    def test_download_list_success(
-        self, mock_progressbar, mock_get, mock_img_open, mock_zipfile, mock_chdir
-    ):
+    def test_download_list_success(self, mock_progressbar, mock_img_open, mock_zipfile, mock_chdir):
         """Test _download_list with successful downloads."""
+        # Create mock scraper
+        mock_scraper, _ = create_mock_scraper()
+
         # Create a real image
         img = Image.new("RGB", (10, 10), color="red")
         img_bytes = BytesIO()
@@ -404,7 +433,7 @@ class TestImageGrabberDownloadList:
         mock_response = Mock()
         mock_response.status_code = 200
         mock_response.content = img_bytes.getvalue()
-        mock_get.return_value = mock_response
+        mock_scraper.get.return_value = mock_response
 
         # Setup image mock
         mock_img = MagicMock()
@@ -415,7 +444,9 @@ class TestImageGrabberDownloadList:
         mock_zipfile.return_value = mock_zip
 
         with patch.object(ImageGrabber, "validate"):
-            grabber = ImageGrabber("https://example.com/manga/123", "/tmp/", "crawl", scraper=mock_scraper)
+            grabber = ImageGrabber(
+                "https://example.com/manga/123", "/tmp/", "crawl", scraper=mock_scraper
+            )
             grabber.title = "Test"
             grabber.tag = "volume"
             grabber.subtag = "CN"
@@ -425,7 +456,7 @@ class TestImageGrabberDownloadList:
             grabber._download_list(urls)
 
         # Verify downloads
-        assert mock_get.call_count == 2
+        assert mock_scraper.get.call_count == 2
         assert mock_img.save.call_count == 2
         mock_zipfile.assert_called_once()
         assert mock_zip.write.call_count == 2
@@ -435,9 +466,12 @@ class TestImageGrabberDownloadList:
     @patch("wgrabber.image_grabber.Image.open")
     @patch("wgrabber.image_grabber.click.progressbar")
     def test_download_list_404_jpg_to_png(
-        self, mock_progressbar, mock_get, mock_img_open, mock_zipfile, mock_chdir
+        self, mock_progressbar, mock_img_open, mock_zipfile, mock_chdir
     ):
         """Test _download_list retries with different extension on 404."""
+        # Create mock scraper
+        mock_scraper, _ = create_mock_scraper()
+
         img = Image.new("RGB", (10, 10), color="blue")
         img_bytes = BytesIO()
         img.save(img_bytes, format="PNG")
@@ -455,7 +489,7 @@ class TestImageGrabberDownloadList:
         resp_200.status_code = 200
         resp_200.content = img_bytes.getvalue()
 
-        mock_get.side_effect = [resp_404, resp_200]
+        mock_scraper.get.side_effect = [resp_404, resp_200]
 
         mock_img = MagicMock()
         mock_img_open.return_value = mock_img
@@ -464,7 +498,9 @@ class TestImageGrabberDownloadList:
         mock_zipfile.return_value = mock_zip
 
         with patch.object(ImageGrabber, "validate"):
-            grabber = ImageGrabber("https://example.com/manga/123", "/tmp/", "crawl", scraper=mock_scraper)
+            grabber = ImageGrabber(
+                "https://example.com/manga/123", "/tmp/", "crawl", scraper=mock_scraper
+            )
             grabber.title = "Test"
             grabber.tag = "volume"
             grabber.subtag = "CN"
@@ -474,9 +510,9 @@ class TestImageGrabberDownloadList:
             grabber._download_list(urls)
 
         # Should have made 2 requests (original jpg, then png)
-        assert mock_get.call_count == 2
+        assert mock_scraper.get.call_count == 2
         # Verify second call was with .png
-        second_call_url = mock_get.call_args_list[1][0][0]
+        second_call_url = mock_scraper.get.call_args_list[1][0][0]
         assert ".png" in second_call_url
 
     @patch("wgrabber.image_grabber.os.chdir")
@@ -484,9 +520,12 @@ class TestImageGrabberDownloadList:
     @patch("wgrabber.image_grabber.Image.open")
     @patch("wgrabber.image_grabber.click.progressbar")
     def test_download_list_404_png_to_jpg(
-        self, mock_progressbar, mock_get, mock_img_open, mock_zipfile, mock_chdir
+        self, mock_progressbar, mock_img_open, mock_zipfile, mock_chdir
     ):
         """Test _download_list retries png to jpg on 404."""
+        # Create mock scraper
+        mock_scraper, _ = create_mock_scraper()
+
         img = Image.new("RGB", (10, 10), color="green")
         img_bytes = BytesIO()
         img.save(img_bytes, format="JPEG")
@@ -503,7 +542,7 @@ class TestImageGrabberDownloadList:
         resp_200.status_code = 200
         resp_200.content = img_bytes.getvalue()
 
-        mock_get.side_effect = [resp_404, resp_200]
+        mock_scraper.get.side_effect = [resp_404, resp_200]
 
         mock_img = MagicMock()
         mock_img_open.return_value = mock_img
@@ -512,7 +551,9 @@ class TestImageGrabberDownloadList:
         mock_zipfile.return_value = mock_zip
 
         with patch.object(ImageGrabber, "validate"):
-            grabber = ImageGrabber("https://example.com/manga/123", "/tmp/", "crawl", scraper=mock_scraper)
+            grabber = ImageGrabber(
+                "https://example.com/manga/123", "/tmp/", "crawl", scraper=mock_scraper
+            )
             grabber.title = "Test"
             grabber.tag = "volume"
             grabber.subtag = "CN"
@@ -521,8 +562,8 @@ class TestImageGrabberDownloadList:
 
             grabber._download_list(urls)
 
-        assert mock_get.call_count == 2
-        second_call_url = mock_get.call_args_list[1][0][0]
+        assert mock_scraper.get.call_count == 2
+        second_call_url = mock_scraper.get.call_args_list[1][0][0]
         assert ".jpg" in second_call_url
 
     @patch("wgrabber.image_grabber.os.chdir")
@@ -530,9 +571,12 @@ class TestImageGrabberDownloadList:
     @patch("wgrabber.image_grabber.Image.open")
     @patch("wgrabber.image_grabber.click.progressbar")
     def test_download_list_oserror(
-        self, mock_progressbar, mock_get, mock_img_open, mock_zipfile, mock_chdir, capsys
+        self, mock_progressbar, mock_img_open, mock_zipfile, mock_chdir, capsys
     ):
         """Test _download_list handles OSError when saving."""
+        # Create mock scraper
+        mock_scraper, _ = create_mock_scraper()
+
         urls = ["//img.example.com/1.jpg"]
         mock_progressbar.return_value.__enter__ = Mock(return_value=urls)
         mock_progressbar.return_value.__exit__ = Mock(return_value=False)
@@ -540,7 +584,7 @@ class TestImageGrabberDownloadList:
         resp = Mock()
         resp.status_code = 200
         resp.content = b"fake image"
-        mock_get.return_value = resp
+        mock_scraper.get.return_value = resp
 
         # Image.open raises OSError
         mock_img_open.side_effect = OSError("Cannot save")
@@ -549,7 +593,9 @@ class TestImageGrabberDownloadList:
         mock_zipfile.return_value = mock_zip
 
         with patch.object(ImageGrabber, "validate"):
-            grabber = ImageGrabber("https://example.com/manga/123", "/tmp/", "crawl", scraper=mock_scraper)
+            grabber = ImageGrabber(
+                "https://example.com/manga/123", "/tmp/", "crawl", scraper=mock_scraper
+            )
             grabber.title = "Test"
             grabber.tag = "volume"
             grabber.subtag = "CN"
@@ -559,16 +605,19 @@ class TestImageGrabberDownloadList:
             grabber._download_list(urls)
 
         captured = capsys.readouterr()
-        assert "cannot be saved" in captured.out
+        assert "Cannot save" in captured.out
 
     @patch("wgrabber.image_grabber.os.chdir")
     @patch("wgrabber.image_grabber.zipfile.ZipFile")
     @patch("wgrabber.image_grabber.Image.open")
     @patch("wgrabber.image_grabber.click.progressbar")
     def test_download_list_other_status(
-        self, mock_progressbar, mock_get, mock_img_open, mock_zipfile, mock_chdir
+        self, mock_progressbar, mock_img_open, mock_zipfile, mock_chdir
     ):
         """Test _download_list with non-200/404 status codes."""
+        # Create mock scraper
+        mock_scraper, _ = create_mock_scraper()
+
         urls = ["//img.example.com/1.jpg"]
         mock_progressbar.return_value.__enter__ = Mock(return_value=urls)
         mock_progressbar.return_value.__exit__ = Mock(return_value=False)
@@ -576,13 +625,15 @@ class TestImageGrabberDownloadList:
         # Return 500 error
         resp = Mock()
         resp.status_code = 500
-        mock_get.return_value = resp
+        mock_scraper.get.return_value = resp
 
         mock_zip = MagicMock()
         mock_zipfile.return_value = mock_zip
 
         with patch.object(ImageGrabber, "validate"):
-            grabber = ImageGrabber("https://example.com/manga/123", "/tmp/", "crawl", scraper=mock_scraper)
+            grabber = ImageGrabber(
+                "https://example.com/manga/123", "/tmp/", "crawl", scraper=mock_scraper
+            )
             grabber.title = "Test"
             grabber.tag = "volume"
             grabber.subtag = "CN"
@@ -600,9 +651,12 @@ class TestImageGrabberDownloadList:
     @patch("wgrabber.image_grabber.Image.open")
     @patch("wgrabber.image_grabber.click.progressbar")
     def test_download_list_with_zip_only(
-        self, mock_progressbar, mock_get, mock_img_open, mock_zipfile, mock_chdir, mock_remove
+        self, mock_progressbar, mock_img_open, mock_zipfile, mock_chdir, mock_remove
     ):
         """Test _download_list with zip_only=True deletes images after zipping."""
+        # Create mock scraper
+        mock_scraper, _ = create_mock_scraper()
+
         img = Image.new("RGB", (10, 10), color="red")
         img_bytes = BytesIO()
         img.save(img_bytes, format="JPEG")
@@ -615,7 +669,7 @@ class TestImageGrabberDownloadList:
         resp = Mock()
         resp.status_code = 200
         resp.content = img_bytes.getvalue()
-        mock_get.return_value = resp
+        mock_scraper.get.return_value = resp
 
         mock_img = MagicMock()
         mock_img_open.return_value = mock_img
@@ -625,7 +679,11 @@ class TestImageGrabberDownloadList:
 
         with patch.object(ImageGrabber, "validate"):
             grabber = ImageGrabber(
-                "https://example.com/manga/123", "/tmp/", "crawl", zip_only=True
+                "https://example.com/manga/123",
+                "/tmp/",
+                "crawl",
+                zip_only=True,
+                scraper=mock_scraper,
             )
             grabber.title = "Test"
             grabber.tag = "volume"
@@ -636,7 +694,7 @@ class TestImageGrabberDownloadList:
             grabber._download_list(urls)
 
         # Verify images were downloaded and saved
-        assert mock_get.call_count == 2
+        assert mock_scraper.get.call_count == 2
         assert mock_img.save.call_count == 2
 
         # Verify zip was created
@@ -652,9 +710,12 @@ class TestImageGrabberDownloadList:
     @patch("wgrabber.image_grabber.Image.open")
     @patch("wgrabber.image_grabber.click.progressbar")
     def test_download_list_without_zip_only(
-        self, mock_progressbar, mock_get, mock_img_open, mock_zipfile, mock_chdir, mock_remove
+        self, mock_progressbar, mock_img_open, mock_zipfile, mock_chdir, mock_remove
     ):
         """Test _download_list with zip_only=False keeps images."""
+        # Create mock scraper
+        mock_scraper, _ = create_mock_scraper()
+
         img = Image.new("RGB", (10, 10), color="red")
         img_bytes = BytesIO()
         img.save(img_bytes, format="JPEG")
@@ -667,7 +728,7 @@ class TestImageGrabberDownloadList:
         resp = Mock()
         resp.status_code = 200
         resp.content = img_bytes.getvalue()
-        mock_get.return_value = resp
+        mock_scraper.get.return_value = resp
 
         mock_img = MagicMock()
         mock_img_open.return_value = mock_img
@@ -677,7 +738,11 @@ class TestImageGrabberDownloadList:
 
         with patch.object(ImageGrabber, "validate"):
             grabber = ImageGrabber(
-                "https://example.com/manga/123", "/tmp/", "crawl", zip_only=False
+                "https://example.com/manga/123",
+                "/tmp/",
+                "crawl",
+                zip_only=False,
+                scraper=mock_scraper,
             )
             grabber.title = "Test"
             grabber.tag = "volume"
@@ -688,7 +753,7 @@ class TestImageGrabberDownloadList:
             grabber._download_list(urls)
 
         # Verify images were downloaded
-        assert mock_get.call_count == 1
+        assert mock_scraper.get.call_count == 1
         assert mock_img.save.call_count == 1
 
         # Verify zip was created
@@ -705,13 +770,18 @@ class TestImageGrabberDownload:
     @patch("wgrabber.image_grabber.URLProcessor")
     def test_download_normal_mode(self, mock_urlprocessor, mock_makedirs):
         """Test download method in normal mode."""
+        # Create mock scraper
+        mock_scraper, _ = create_mock_scraper()
+
         mock_processor = MagicMock()
         mock_processor.normal_url_list.return_value = iter([])
         mock_processor.special_url_list.return_value = iter([])
         mock_urlprocessor.return_value = mock_processor
 
         with patch.object(ImageGrabber, "validate"):
-            grabber = ImageGrabber("https://example.com/manga/12345", "/tmp/manga/", "normal", scraper=mock_scraper)
+            grabber = ImageGrabber(
+                "https://example.com/manga/12345", "/tmp/manga/", "normal", scraper=mock_scraper
+            )
             grabber.title = "Test Manga"
             grabber.tag = "volume"
             grabber.subtag = "CN"
@@ -731,8 +801,13 @@ class TestImageGrabberDownload:
     @patch("wgrabber.image_grabber.os.makedirs")
     def test_download_crawl_mode(self, mock_makedirs):
         """Test download method in crawl mode."""
+        # Create mock scraper
+        mock_scraper, _ = create_mock_scraper()
+
         with patch.object(ImageGrabber, "validate"):
-            grabber = ImageGrabber("https://example.com/manga/12345", "/tmp/manga/", "crawl", scraper=mock_scraper)
+            grabber = ImageGrabber(
+                "https://example.com/manga/12345", "/tmp/manga/", "crawl", scraper=mock_scraper
+            )
             grabber.title = "Test Manga"
             grabber.tag = "volume"
             grabber.subtag = "CN"
@@ -750,10 +825,15 @@ class TestImageGrabberDownload:
     @patch("wgrabber.image_grabber.os.makedirs")
     def test_download_makedirs_oserror(self, mock_makedirs):
         """Test download when makedirs fails."""
+        # Create mock scraper
+        mock_scraper, _ = create_mock_scraper()
+
         mock_makedirs.side_effect = OSError("Cannot create dir")
 
         with patch.object(ImageGrabber, "validate"):
-            grabber = ImageGrabber("https://example.com/manga/12345", "/tmp/manga/", "crawl", scraper=mock_scraper)
+            grabber = ImageGrabber(
+                "https://example.com/manga/12345", "/tmp/manga/", "crawl", scraper=mock_scraper
+            )
             grabber.title = "Test Manga"
             grabber.tag = "volume"
             grabber.subtag = "CN"

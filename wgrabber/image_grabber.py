@@ -81,7 +81,7 @@ class ImageGrabber:
                 if attempt < 2:
                     time.sleep(2)
                 else:
-                    raise ValueError(f"Failed to get data URL from {url}: {e}")
+                    raise ValueError(f"Failed to get data URL from {url}: {e}") from e
 
         soup = BeautifulSoup(r.content, "lxml")
         img_tag = soup.find("img", attrs={"id": "picarea"})
@@ -211,16 +211,16 @@ class ImageGrabber:
                         break
                     elif result.status_code in (403, 503, 429):
                         self.consecutive_failures += 1
-                        
+
                         # Exponentially longer waits: 10s, 30s, 60s
-                        wait_time = min(10 * (3 ** attempt), 60)
-                        
+                        wait_time = min(10 * (3**attempt), 60)
+
                         if attempt < max_retries - 1:
                             print(
                                 f"\nPage {page_num + 1}: Security check detected (attempt {attempt + 1}). Waiting {wait_time}s..."
                             )
                             time.sleep(wait_time)
-                            
+
                             # Refresh session after 2nd attempt
                             if attempt == 1 and self.consecutive_failures > 2:
                                 self._refresh_scraper()
@@ -302,23 +302,21 @@ class ImageGrabber:
                 elif r.status_code in (403, 503, 429):
                     self.consecutive_failures += 1
                     # Much longer waits: 15s, 45s, 90s
-                    wait_time = min(15 * (3 ** attempt), 90)
-                    
+                    wait_time = min(15 * (3**attempt), 90)
+
                     if attempt < max_retries - 1:
                         print(
                             f"\nSecurity check (status {r.status_code}, attempt {attempt + 1}). Waiting {wait_time}s..."
                         )
                         time.sleep(wait_time)
-                        
+
                         # Refresh session if we've had multiple failures
                         if self.consecutive_failures > 3:
                             self._refresh_scraper()
                             self.consecutive_failures = 0
                         continue
                     else:
-                        print(
-                            f"\nFailed after {max_retries} attempts. Skipping this image."
-                        )
+                        print(f"\nFailed after {max_retries} attempts. Skipping this image.")
                         return None
 
                 # Other error
