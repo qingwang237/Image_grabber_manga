@@ -568,7 +568,7 @@ class ImageGrabber:
                 async with rate_lock:
                     loop = asyncio.get_running_loop()
                     now = loop.time()
-                    min_interval = max(self.current_delay, 0.0) if not self.disable_delays else 0.0
+                    min_interval = 0.0 if self.disable_delays else max(self.current_delay, 0.0)
                     if last_request_time > 0.0 and min_interval > 0.0:
                         elapsed = now - last_request_time
                         wait_time = min_interval - elapsed
