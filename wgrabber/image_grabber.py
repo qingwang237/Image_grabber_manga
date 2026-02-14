@@ -29,7 +29,7 @@ class ImageGrabber:
         "Upgrade-Insecure-Requests": "1",
     }
 
-    def __init__(self, start_url, base_path, mode, zip_only=False, scraper=None):
+    def __init__(self, start_url, base_path, mode, zip_only=False, scraper=None, sleep_func=None):
         """
         The constructor func.
         """
@@ -47,6 +47,8 @@ class ImageGrabber:
             )
         else:
             self.scraper = scraper
+        # Allow injecting a custom sleep function for testing (default to time.sleep)
+        self._sleep = sleep_func if sleep_func is not None else time.sleep
         self.validate()
 
     def _refresh_scraper(self):
@@ -72,14 +74,14 @@ class ImageGrabber:
                     wait_time = (2**attempt) * 2
                     if attempt < 2:
                         print(f"\nSecurity check during URL resolution. Waiting {wait_time}s...")
-                        time.sleep(wait_time)
+                        self._sleep(wait_time)
                     else:
                         raise ValueError(f"Failed to resolve URL after retries: {url}")
                 else:
                     raise ValueError(f"Unexpected status {r.status_code} for {url}")
             except Exception as e:
                 if attempt < 2:
-                    time.sleep(2)
+                    self._sleep(2)
                 else:
                     raise ValueError(f"Failed to get data URL from {url}: {e}") from e
 
@@ -219,7 +221,7 @@ class ImageGrabber:
                             print(
                                 f"\nPage {page_num + 1}: Security check detected (attempt {attempt + 1}). Waiting {wait_time}s..."
                             )
-                            time.sleep(wait_time)
+                            self._sleep(wait_time)
 
                             # Refresh session after 2nd attempt
                             if attempt == 1 and self.consecutive_failures > 2:
@@ -235,7 +237,7 @@ class ImageGrabber:
                 except Exception as e:
                     if attempt < max_retries - 1:
                         print(f"\nError fetching page {page_num + 1}: {e}. Retrying...")
-                        time.sleep(5)
+                        self._sleep(5)
                     else:
                         print(f"\nFailed to fetch page {page_num + 1}: {e}")
                         continue
@@ -246,7 +248,7 @@ class ImageGrabber:
             # Random delay between page requests (1-3 seconds) to appear more human
             if page_num > 0:
                 delay = random.uniform(1.0, 3.0)
-                time.sleep(delay)
+                self._sleep(delay)
 
             soup = BeautifulSoup(result.content, "lxml")
             imgarea_span = soup.find("span", attrs={"id": "imgarea"})
@@ -308,7 +310,7 @@ class ImageGrabber:
                         print(
                             f"\nSecurity check (status {r.status_code}, attempt {attempt + 1}). Waiting {wait_time}s..."
                         )
-                        time.sleep(wait_time)
+                        self._sleep(wait_time)
 
                         # Refresh session if we've had multiple failures
                         if self.consecutive_failures > 3:
@@ -327,7 +329,7 @@ class ImageGrabber:
             except Exception as e:
                 if attempt < max_retries - 1:
                     print(f"\nError downloading: {e}. Retrying...")
-                    time.sleep(5)
+                    self._sleep(5)
                 else:
                     print(f"\nFailed to download {file_url}: {e}")
                     return None
@@ -347,7 +349,7 @@ class ImageGrabber:
                 # Rate limiting: random delay between requests (1-2 seconds) to appear more human
                 if index > 0:
                     delay = random.uniform(1.0, 2.5)
-                    time.sleep(delay)
+                    self._sleep(delay)
 
                 file_url = "https:" + url
                 r = self._download_image_with_retry(file_url)

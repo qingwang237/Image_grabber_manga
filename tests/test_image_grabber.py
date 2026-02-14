@@ -10,6 +10,11 @@ from PIL import Image
 from wgrabber.image_grabber import ImageGrabber
 
 
+def noop_sleep(seconds):
+    """No-op sleep function for tests to avoid delays."""
+    pass
+
+
 def create_mock_scraper(status_code=200, content=b"<html></html>"):
     """Helper to create a mock scraper for testing."""
     mock_scraper = Mock()
@@ -74,7 +79,11 @@ class TestImageGrabberBasics:
         mock_scraper, _ = create_mock_scraper(status_code=404)
 
         grabber = ImageGrabber(
-            "https://example.com/invalid", "/tmp/manga/", "crawl", scraper=mock_scraper
+            "https://example.com/invalid",
+            "/tmp/manga/",
+            "crawl",
+            scraper=mock_scraper,
+            sleep_func=noop_sleep,
         )
 
         assert grabber.valid is False
@@ -92,7 +101,11 @@ class TestImageGrabberBasics:
         mock_bs.return_value = mock_soup
 
         grabber = ImageGrabber(
-            "https://example.com/invalid", "/tmp/manga/", "crawl", scraper=mock_scraper
+            "https://example.com/invalid",
+            "/tmp/manga/",
+            "crawl",
+            scraper=mock_scraper,
+            sleep_func=noop_sleep,
         )
 
         assert grabber.valid is False
@@ -104,7 +117,11 @@ class TestImageGrabberBasics:
         mock_scraper, _ = create_mock_scraper()
         with patch.object(ImageGrabber, "validate"):
             grabber = ImageGrabber(
-                "https://example.com/manga/12345", "/tmp/manga/", "crawl", scraper=mock_scraper
+                "https://example.com/manga/12345",
+                "/tmp/manga/",
+                "crawl",
+                scraper=mock_scraper,
+                sleep_func=noop_sleep,
             )
             grabber.base_path = "/tmp/manga/"
             grabber.tag = "volume"
@@ -127,7 +144,11 @@ class TestImageGrabberBasics:
 
         with patch.object(ImageGrabber, "validate"):
             grabber = ImageGrabber(
-                "https://example.com/manga/12345", "/tmp/manga/", "crawl", scraper=mock_scraper
+                "https://example.com/manga/12345",
+                "/tmp/manga/",
+                "crawl",
+                scraper=mock_scraper,
+                sleep_func=noop_sleep,
             )
             grabber.base_url = "https://example.com"
 
@@ -155,7 +176,11 @@ class TestImageGrabberValidation:
         mock_bs.side_effect = [soup1, soup2]
 
         grabber = ImageGrabber(
-            "https://example.com/manga/123", "/tmp/", "crawl", scraper=mock_scraper
+            "https://example.com/manga/123",
+            "/tmp/",
+            "crawl",
+            scraper=mock_scraper,
+            sleep_func=noop_sleep,
         )
 
         assert grabber.valid is True
@@ -178,7 +203,11 @@ class TestImageGrabberValidation:
         mock_bs.side_effect = [soup1, soup2]
 
         grabber = ImageGrabber(
-            "https://example.com/manga/456", "/tmp/", "crawl", scraper=mock_scraper
+            "https://example.com/manga/456",
+            "/tmp/",
+            "crawl",
+            scraper=mock_scraper,
+            sleep_func=noop_sleep,
         )
 
         assert grabber.valid is True
@@ -199,7 +228,11 @@ class TestImageGrabberValidation:
         mock_bs.side_effect = [soup1, soup2]
 
         grabber = ImageGrabber(
-            "https://example.com/manga/789", "/tmp/", "crawl", scraper=mock_scraper
+            "https://example.com/manga/789",
+            "/tmp/",
+            "crawl",
+            scraper=mock_scraper,
+            sleep_func=noop_sleep,
         )
 
         assert grabber.valid is True
@@ -220,7 +253,11 @@ class TestImageGrabberValidation:
         mock_bs.side_effect = [soup1, soup2]
 
         grabber = ImageGrabber(
-            "https://example.com/manga/cos", "/tmp/", "crawl", scraper=mock_scraper
+            "https://example.com/manga/cos",
+            "/tmp/",
+            "crawl",
+            scraper=mock_scraper,
+            sleep_func=noop_sleep,
         )
 
         assert grabber.valid is True
@@ -240,7 +277,11 @@ class TestImageGrabberValidation:
         mock_bs.side_effect = [soup1, soup2]
 
         grabber = ImageGrabber(
-            "https://example.com/manga/unk", "/tmp/", "crawl", scraper=mock_scraper
+            "https://example.com/manga/unk",
+            "/tmp/",
+            "crawl",
+            scraper=mock_scraper,
+            sleep_func=noop_sleep,
         )
 
         assert grabber.valid is True
@@ -297,7 +338,11 @@ class TestImageGrabberValidation:
         mock_bs.side_effect = [soup, soup2]
 
         grabber = ImageGrabber(
-            "https://example.com/manga/missing", "/tmp/", "crawl", scraper=mock_scraper
+            "https://example.com/manga/missing",
+            "/tmp/",
+            "crawl",
+            scraper=mock_scraper,
+            sleep_func=noop_sleep,
         )
 
         assert grabber.valid is True
@@ -337,7 +382,11 @@ class TestImageGrabberValidation:
         mock_bs.return_value = soup
 
         grabber = ImageGrabber(
-            "https://example.com/manga/nolink", "/tmp/", "crawl", scraper=mock_scraper
+            "https://example.com/manga/nolink",
+            "/tmp/",
+            "crawl",
+            scraper=mock_scraper,
+            sleep_func=noop_sleep,
         )
 
         assert grabber.valid is False
@@ -393,7 +442,11 @@ class TestImageGrabberPageCrawl:
 
         with patch.object(ImageGrabber, "validate"):
             grabber = ImageGrabber(
-                "https://example.com/manga/123", "/tmp/", "crawl", scraper=mock_scraper
+                "https://example.com/manga/123",
+                "/tmp/",
+                "crawl",
+                scraper=mock_scraper,
+                sleep_func=noop_sleep,
             )
             grabber.base_url = "https://example.com"
             grabber.page_num = 3
@@ -445,7 +498,11 @@ class TestImageGrabberDownloadList:
 
         with patch.object(ImageGrabber, "validate"):
             grabber = ImageGrabber(
-                "https://example.com/manga/123", "/tmp/", "crawl", scraper=mock_scraper
+                "https://example.com/manga/123",
+                "/tmp/",
+                "crawl",
+                scraper=mock_scraper,
+                sleep_func=noop_sleep,
             )
             grabber.title = "Test"
             grabber.tag = "volume"
@@ -499,7 +556,11 @@ class TestImageGrabberDownloadList:
 
         with patch.object(ImageGrabber, "validate"):
             grabber = ImageGrabber(
-                "https://example.com/manga/123", "/tmp/", "crawl", scraper=mock_scraper
+                "https://example.com/manga/123",
+                "/tmp/",
+                "crawl",
+                scraper=mock_scraper,
+                sleep_func=noop_sleep,
             )
             grabber.title = "Test"
             grabber.tag = "volume"
@@ -552,7 +613,11 @@ class TestImageGrabberDownloadList:
 
         with patch.object(ImageGrabber, "validate"):
             grabber = ImageGrabber(
-                "https://example.com/manga/123", "/tmp/", "crawl", scraper=mock_scraper
+                "https://example.com/manga/123",
+                "/tmp/",
+                "crawl",
+                scraper=mock_scraper,
+                sleep_func=noop_sleep,
             )
             grabber.title = "Test"
             grabber.tag = "volume"
@@ -594,7 +659,11 @@ class TestImageGrabberDownloadList:
 
         with patch.object(ImageGrabber, "validate"):
             grabber = ImageGrabber(
-                "https://example.com/manga/123", "/tmp/", "crawl", scraper=mock_scraper
+                "https://example.com/manga/123",
+                "/tmp/",
+                "crawl",
+                scraper=mock_scraper,
+                sleep_func=noop_sleep,
             )
             grabber.title = "Test"
             grabber.tag = "volume"
@@ -632,7 +701,11 @@ class TestImageGrabberDownloadList:
 
         with patch.object(ImageGrabber, "validate"):
             grabber = ImageGrabber(
-                "https://example.com/manga/123", "/tmp/", "crawl", scraper=mock_scraper
+                "https://example.com/manga/123",
+                "/tmp/",
+                "crawl",
+                scraper=mock_scraper,
+                sleep_func=noop_sleep,
             )
             grabber.title = "Test"
             grabber.tag = "volume"
@@ -684,6 +757,7 @@ class TestImageGrabberDownloadList:
                 "crawl",
                 zip_only=True,
                 scraper=mock_scraper,
+                sleep_func=noop_sleep,
             )
             grabber.title = "Test"
             grabber.tag = "volume"
@@ -743,6 +817,7 @@ class TestImageGrabberDownloadList:
                 "crawl",
                 zip_only=False,
                 scraper=mock_scraper,
+                sleep_func=noop_sleep,
             )
             grabber.title = "Test"
             grabber.tag = "volume"
@@ -780,7 +855,11 @@ class TestImageGrabberDownload:
 
         with patch.object(ImageGrabber, "validate"):
             grabber = ImageGrabber(
-                "https://example.com/manga/12345", "/tmp/manga/", "normal", scraper=mock_scraper
+                "https://example.com/manga/12345",
+                "/tmp/manga/",
+                "normal",
+                scraper=mock_scraper,
+                sleep_func=noop_sleep,
             )
             grabber.title = "Test Manga"
             grabber.tag = "volume"
@@ -806,7 +885,11 @@ class TestImageGrabberDownload:
 
         with patch.object(ImageGrabber, "validate"):
             grabber = ImageGrabber(
-                "https://example.com/manga/12345", "/tmp/manga/", "crawl", scraper=mock_scraper
+                "https://example.com/manga/12345",
+                "/tmp/manga/",
+                "crawl",
+                scraper=mock_scraper,
+                sleep_func=noop_sleep,
             )
             grabber.title = "Test Manga"
             grabber.tag = "volume"
@@ -832,7 +915,11 @@ class TestImageGrabberDownload:
 
         with patch.object(ImageGrabber, "validate"):
             grabber = ImageGrabber(
-                "https://example.com/manga/12345", "/tmp/manga/", "crawl", scraper=mock_scraper
+                "https://example.com/manga/12345",
+                "/tmp/manga/",
+                "crawl",
+                scraper=mock_scraper,
+                sleep_func=noop_sleep,
             )
             grabber.title = "Test Manga"
             grabber.tag = "volume"
