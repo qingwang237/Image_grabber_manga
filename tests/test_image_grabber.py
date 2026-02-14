@@ -4,8 +4,6 @@ Tests for async ImageGrabber class.
 
 from unittest.mock import AsyncMock, MagicMock, Mock, patch
 
-import pytest
-
 from wgrabber.image_grabber import ImageGrabber
 
 
@@ -212,5 +210,3 @@ class TestImageGrabberDownload:
                 await grabber.download()
 
         mock_makedirs.assert_called_once()
-
-
