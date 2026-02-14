@@ -22,6 +22,7 @@ dependencies = [
     "lxml>=5.1.0",
     "click>=8.1.0",
     "Pillow>=10.3.0",
+    "rich>=13.7.0",
 ]
 
 [project.optional-dependencies]

@@ -3,9 +3,13 @@ import os
 from os.path import expanduser
 
 import click
+from rich.console import Console
+from rich.panel import Panel
 
 from . import __version__
 from .image_grabber import ImageGrabber
+
+console = Console()
 
 
 @click.command()
@@ -34,13 +38,33 @@ def main(url, folder, mode, zip_only):
 async def async_main(url, path, mode, zip_only):
     """Async main function to handle the manga download."""
     manga = ImageGrabber(url, path, mode, zip_only=zip_only)
+
+    console.print(
+        Panel.fit(
+            f"[cyan]🔍 Validating URL...[/cyan]\n[dim]{url}[/dim]",
+            title="[bold cyan]Manga Downloader[/bold cyan]",
+            border_style="cyan",
+        )
+    )
+
     try:
         await manga.validate()
 
         if manga.valid:
+            console.print(
+                Panel.fit(
+                    f"[green]✅ Validation successful![/green]\n"
+                    f"[cyan]📖 Title:[/cyan] {manga.title}\n"
+                    f"[cyan]📄 Pages:[/cyan] {manga.page_num}\n"
+                    f"[cyan]🏷️  Category:[/cyan] {manga.tag}/{manga.subtag}",
+                    title="[bold green]Ready to Download[/bold green]",
+                    border_style="green",
+                )
+            )
             await manga.download()
+            console.print("[bold green]✅ Download complete![/bold green]")
         else:
-            click.echo("The start url is not recognized.")
+            console.print("[bold red]❌ The start url is not recognized.[/bold red]")
     finally:
         # Ensure the scraper session is properly closed
         await manga._close_scraper()

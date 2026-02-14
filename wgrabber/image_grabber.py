@@ -10,8 +10,21 @@ from urllib.parse import urlparse
 import cloudscraper
 from bs4 import BeautifulSoup, Tag
 from PIL import Image
+from rich.console import Console
+from rich.panel import Panel
+from rich.progress import (
+    BarColumn,
+    Progress,
+    SpinnerColumn,
+    TextColumn,
+    TimeRemainingColumn,
+)
+from rich.table import Table
 
 from .url_processor import URLProcessor
+
+# Global console for rich output
+console = Console()
 
 
 class AsyncCloudScraper(cloudscraper.CloudScraper):
@@ -60,6 +73,12 @@ class ImageGrabber:
         self.disable_delays = disable_delays  # Allow disabling delays for tests
         self.consecutive_failures = 0  # Track consecutive security check failures
 
+        # Adaptive delay mechanism
+        self.current_delay = 3.0  # Start with 3 second base delay
+        self.min_delay = 2.0  # Minimum delay between requests
+        self.max_delay = 15.0  # Maximum delay between requests
+        self.success_count = 0  # Track successful requests to gradually reduce delay
+
         # Allow injecting a custom scraper for testing, otherwise create async cloudscraper
         if scraper is None:
             self.scraper = AsyncCloudScraper(
@@ -80,7 +99,7 @@ class ImageGrabber:
 
     async def _refresh_scraper(self):
         """Recreate the scraper session to get fresh cookies/session."""
-        print("\nRefreshing session to bypass security checks...")
+        console.print("[yellow]🔄 Refreshing session to bypass security checks...[/yellow]")
         if self._own_scraper:
             await self.scraper.close()
         self.scraper = AsyncCloudScraper(
@@ -103,7 +122,9 @@ class ImageGrabber:
                 elif r.status_code in (403, 503, 429):
                     wait_time = (2**attempt) * 2
                     if attempt < 2:
-                        print(f"\nSecurity check during URL resolution. Waiting {wait_time}s...")
+                        console.print(
+                            f"[yellow]⏳ Security check during URL resolution. Waiting {wait_time}s...[/yellow]"
+                        )
                         await asyncio.sleep(wait_time)
                     else:
                         raise ValueError(f"Failed to resolve URL after retries: {url}")
@@ -132,7 +153,7 @@ class ImageGrabber:
         Validate the url and content.
         """
         if not self.url:
-            print("The url is not set.")
+            console.print("[red]❌ The url is not set.[/red]")
             self.valid = False
             return
 
@@ -140,10 +161,10 @@ class ImageGrabber:
             result = await self.scraper.get_async(self.url)
             if result.status_code != 200:
                 self.valid = False
-                print(f"The url is not valid. Status: {result.status_code}")
+                console.print(f"[red]❌ The url is not valid. Status: {result.status_code}[/red]")
                 return
         except Exception as e:
-            print(f"Failed to fetch URL: {e}")
+            console.print(f"[red]❌ Failed to fetch URL: {e}[/red]")
             self.valid = False
             return
 
@@ -154,39 +175,39 @@ class ImageGrabber:
                 raise IndexError("No title found")
             self.title = h2_tags[0].string.strip()
         except IndexError:
-            print("Please make sure the url is correct.")
+            console.print("[red]❌ Please make sure the url is correct.[/red]")
             self.valid = False
             return
 
         # Check if pic_box elements exist before accessing
         pic_boxes = soup.find_all("div", attrs={"class": "pic_box"})
         if not pic_boxes:
-            print("Cannot find any pic_box elements.")
+            console.print("[red]❌ Cannot find any pic_box elements.[/red]")
             self.valid = False
             return
 
         # Get the last pic_box link
         last_pic_box_link = pic_boxes[-1].find("a")
         if last_pic_box_link is None:
-            print("Cannot find link in last pic_box.")
+            console.print("[red]❌ Cannot find link in last pic_box.[/red]")
             self.valid = False
             return
 
         # also save the first link
         first_pic_box = pic_boxes[0]
         if first_pic_box is None:
-            print("Cannot find pic_box div.")
+            console.print("[red]❌ Cannot find pic_box div.[/red]")
             self.valid = False
             return
         first_link = first_pic_box.find("a")
         if first_link is None:
-            print("Cannot find link in pic_box.")
+            console.print("[red]❌ Cannot find link in pic_box.[/red]")
             self.valid = False
             return
         first_link = cast(Tag, first_link)
         href = first_link.get("href")
         if href is None:
-            print("Link has no href attribute.")
+            console.print("[red]❌ Link has no href attribute.[/red]")
             self.valid = False
             return
         self.img_link = href
@@ -194,14 +215,14 @@ class ImageGrabber:
             last_pic_box_link = cast(Tag, last_pic_box_link)
             data_url_href = last_pic_box_link.get("href")
             if data_url_href is None:
-                print("Last pic_box link has no href.")
+                console.print("[red]❌ Last pic_box link has no href.[/red]")
                 self.valid = False
                 return
             self.data_url = await self._url_resolver(data_url_href)
             patten = re.compile(r"頁數")
             label_tag = soup.find("label", text=patten)
             if label_tag is None:
-                print("Cannot find page number.")
+                console.print("[red]❌ Cannot find page number.[/red]")
                 self.valid = False
                 return
             label_string = (
@@ -212,7 +233,7 @@ class ImageGrabber:
             # find the catagory and lang tags
             bread_div = soup.find("div", attrs={"class": "png bread"})
             if bread_div is None or not hasattr(bread_div, "find_all"):
-                print("Cannot find breadcrumb div.")
+                console.print("[red]❌ Cannot find breadcrumb div.[/red]")
                 self.valid = False
                 return
             bread_div = cast(Tag, bread_div)
@@ -231,7 +252,7 @@ class ImageGrabber:
             if len(tags) > 1:
                 self.tag = category_mapping.get(tags[1].string, "unknown")
             else:
-                print("Cannot determine category from breadcrumb tags.")
+                console.print("[red]❌ Cannot determine category from breadcrumb tags.[/red]")
                 self.tag = "unknown"
                 self.valid = False
                 return
@@ -251,7 +272,7 @@ class ImageGrabber:
                 self.subtag = "unknown"
             self.valid = True
         else:
-            print("Cannot find data url.")
+            console.print("[red]❌ Cannot find data url.[/red]")
             self.valid = False
 
     def _base_path_modifier(self):
@@ -266,6 +287,13 @@ class ImageGrabber:
         """
         url = self.base_url + start
         for page_num in range(self.page_num):
+            # Adaptive delay BEFORE request (except first page)
+            if page_num > 0 and not self.disable_delays:
+                # Add random jitter to appear more human
+                jitter = random.uniform(-0.5, 0.5)
+                actual_delay = max(self.min_delay, self.current_delay + jitter)
+                await asyncio.sleep(actual_delay)
+
             # Retry logic for page fetching
             max_retries = 3
             result = None
@@ -275,16 +303,27 @@ class ImageGrabber:
                     result = await self.scraper.get_async(url)
                     if result.status_code == 200:
                         self.consecutive_failures = 0  # Reset failure counter
+                        self.success_count += 1
+
+                        # Gradually decrease delay after consistent success (every 5 successful pages)
+                        if self.success_count >= 5 and self.current_delay > self.min_delay:
+                            self.current_delay = max(self.min_delay, self.current_delay * 0.9)
+                            self.success_count = 0
+
                         break
                     elif result.status_code in (403, 503, 429):
                         self.consecutive_failures += 1
+                        self.success_count = 0  # Reset success counter
+
+                        # Increase delay for future requests
+                        self.current_delay = min(self.max_delay, self.current_delay * 1.5)
 
                         # Exponentially longer waits: 10s, 30s, 60s
                         wait_time = min(10 * (3**attempt), 60)
 
                         if attempt < max_retries - 1:
-                            print(
-                                f"\nPage {page_num + 1}: Security check detected (attempt {attempt + 1}). Waiting {wait_time}s..."
+                            console.print(
+                                f"[yellow]⚠️  Page {page_num + 1}: Security check detected (attempt {attempt + 1}). Waiting {wait_time}s... (adjusting delay to {self.current_delay:.1f}s)[/yellow]"
                             )
                             await asyncio.sleep(wait_time)
 
@@ -292,28 +331,27 @@ class ImageGrabber:
                             if attempt == 1 and self.consecutive_failures > 2:
                                 await self._refresh_scraper()
                         else:
-                            print(
-                                f"\nPage {page_num + 1}: Failed after {max_retries} attempts. Skipping page."
+                            console.print(
+                                f"[red]❌ Page {page_num + 1}: Failed after {max_retries} attempts. Skipping page.[/red]"
                             )
                             continue
                     else:
-                        print(f"\nPage {page_num + 1}: Unexpected status {result.status_code}")
+                        console.print(
+                            f"[red]⚠️  Page {page_num + 1}: Unexpected status {result.status_code}[/red]"
+                        )
                         break
                 except Exception as e:
                     if attempt < max_retries - 1:
-                        print(f"\nError fetching page {page_num + 1}: {e}. Retrying...")
+                        console.print(
+                            f"[yellow]⚠️  Error fetching page {page_num + 1}: {e}. Retrying...[/yellow]"
+                        )
                         await asyncio.sleep(5)
                     else:
-                        print(f"\nFailed to fetch page {page_num + 1}: {e}")
+                        console.print(f"[red]❌ Failed to fetch page {page_num + 1}: {e}[/red]")
                         continue
 
             if result is None or result.status_code != 200:
                 continue
-
-            # Random delay between page requests (1-3 seconds) to appear more human
-            if page_num > 0 and not self.disable_delays:
-                delay = random.uniform(1.0, 3.0)
-                await asyncio.sleep(delay)
 
             soup = BeautifulSoup(result.content, "lxml")
             imgarea_span = soup.find("span", attrs={"id": "imgarea"})
@@ -372,8 +410,8 @@ class ImageGrabber:
                     wait_time = min(15 * (3**attempt), 90)
 
                     if attempt < max_retries - 1:
-                        print(
-                            f"\nSecurity check (status {r.status_code}, attempt {attempt + 1}). Waiting {wait_time}s..."
+                        console.print(
+                            f"[yellow]⏳ Security check (status {r.status_code}, attempt {attempt + 1}). Waiting {wait_time}s...[/yellow]"
                         )
                         await asyncio.sleep(wait_time)
 
@@ -383,20 +421,24 @@ class ImageGrabber:
                             self.consecutive_failures = 0
                         continue
                     else:
-                        print(f"\nFailed after {max_retries} attempts. Skipping this image.")
+                        console.print(
+                            f"[red]❌ Failed after {max_retries} attempts. Skipping this image.[/red]"
+                        )
                         return None
 
                 # Other error
                 else:
-                    print(f"\nUnexpected status code {r.status_code} for {file_url}")
+                    console.print(
+                        f"[red]⚠️  Unexpected status code {r.status_code} for {file_url}[/red]"
+                    )
                     return None
 
             except Exception as e:
                 if attempt < max_retries - 1:
-                    print(f"\nError downloading: {e}. Retrying...")
+                    console.print(f"[yellow]⚠️  Error downloading: {e}. Retrying...[/yellow]")
                     await asyncio.sleep(5)
                 else:
-                    print(f"\nFailed to download {file_url}: {e}")
+                    console.print(f"[red]❌ Failed to download {file_url}: {e}[/red]")
                     return None
 
         return None
@@ -448,7 +490,7 @@ class ImageGrabber:
                 )
                 return (True, img_name, None)
             except OSError as e:
-                print(f"\nCannot save {effective_url}: {e}")
+                console.print(f"[red]⚠️  Cannot save {effective_url}: {e}[/red]")
                 return (False, None, (index, effective_url))
         else:
             return (False, None, (index, effective_url))
@@ -464,9 +506,33 @@ class ImageGrabber:
         # Collect all URLs first
         urls = []
         if hasattr(url_iterator, "__aiter__"):
-            # Async iterator
-            async for url in url_iterator:
-                urls.append(url)
+            # Async iterator - show progress during collection
+            console.print(
+                Panel.fit(
+                    f"[cyan]📖 Collecting image URLs from {self.page_num} pages\n"
+                    f"⚙️  Adaptive delay: {self.current_delay:.1f}s (range: {self.min_delay:.1f}s-{self.max_delay:.1f}s)\n"
+                    f"🎯 Delay auto-adjusts based on rate limiting[/cyan]",
+                    title="[bold cyan]URL Collection[/bold cyan]",
+                    border_style="cyan",
+                )
+            )
+
+            with Progress(
+                SpinnerColumn(),
+                TextColumn("[progress.description]{task.description}"),
+                BarColumn(),
+                TextColumn("[progress.percentage]{task.percentage:>3.0f}%"),
+                TextColumn("({task.completed}/{task.total} pages)"),
+                console=console,
+            ) as progress:
+                crawl_task = progress.add_task("[cyan]Crawling pages...", total=self.page_num)
+                async for url in url_iterator:
+                    urls.append(url)
+                    progress.update(crawl_task, advance=1)
+
+            console.print(
+                f"[green]✅ Collected {len(urls)} images (final delay: {self.current_delay:.1f}s)[/green]"
+            )
         else:
             # Regular iterator
             urls = list(url_iterator)
@@ -481,47 +547,66 @@ class ImageGrabber:
             async with semaphore:
                 return await self._download_single_image(index, url, new_folder)
 
-        # Create progress bar
-        print(f"\nDownloading {len(urls)} images...")
-
-        # Download concurrently
+        # Download concurrently with rich progress bar
         tasks = [download_with_semaphore(index, url) for index, url in enumerate(urls)]
 
-        # Process results as they complete
-        completed = 0
-        for coro in asyncio.as_completed(tasks):
-            success, img_name, error_info = await coro
-            completed += 1
+        # Process results as they complete with rich progress bar
+        with Progress(
+            SpinnerColumn(),
+            TextColumn("[progress.description]{task.description}"),
+            BarColumn(),
+            TextColumn("[progress.percentage]{task.percentage:>3.0f}%"),
+            TextColumn("({task.completed}/{task.total} images)"),
+            TimeRemainingColumn(),
+            console=console,
+        ) as progress:
+            download_task = progress.add_task("[cyan]Downloading images...", total=len(urls))
 
-            # Update progress
-            progress = (completed / len(urls)) * 100
-            print(f"\rProgress: {completed}/{len(urls)} ({progress:.1f}%)", end="", flush=True)
+            for coro in asyncio.as_completed(tasks):
+                success, img_name, error_info = await coro
 
-            if success:
-                img_list.append(img_name)
-            else:
-                if error_info:
-                    failed_images.append(error_info)
+                if success:
+                    img_list.append(img_name)
+                else:
+                    if error_info:
+                        failed_images.append(error_info)
 
-        print()  # New line after progress
+                progress.update(download_task, advance=1)
 
-        # Report results
+        # Report results with rich table
         if failed_images:
-            print("\n\nDownload Summary:")
-            print(f"  Successfully downloaded: {len(img_list)}/{len(urls)} images")
-            print(f"  Failed: {len(failed_images)} images")
+            console.print()
+            table = Table(title="Download Summary", show_header=True, header_style="bold magenta")
+            table.add_column("Status", style="cyan", width=20)
+            table.add_column("Count", justify="right", style="green")
+
+            table.add_row("✅ Successfully downloaded", f"{len(img_list)}/{len(urls)}")
+            table.add_row("❌ Failed", f"{len(failed_images)}", style="red")
+
+            console.print(table)
+
             if len(failed_images) <= 10:
-                print(f"  Failed images: {[idx for idx, _ in failed_images]}")
+                console.print(
+                    f"[yellow]Failed images: {[idx for idx, _ in failed_images]}[/yellow]"
+                )
+
             if len(failed_images) > len(img_list) * 0.5:
-                print("\n⚠️  Warning: More than 50% of images failed. You may need to:")
-                print("     1. Wait a few minutes and try again")
-                print("     2. Check your internet connection")
-                print("     3. Verify the URL is still valid")
+                console.print(
+                    Panel(
+                        "[yellow]⚠️  More than 50% of images failed. You may need to:\n"
+                        "   1. Wait a few minutes and try again\n"
+                        "   2. Check your internet connection\n"
+                        "   3. Verify the URL is still valid[/yellow]",
+                        title="[bold yellow]Warning[/bold yellow]",
+                        border_style="yellow",
+                    )
+                )
 
         # Sort img_list by index to maintain order for zip
         img_list.sort(key=lambda x: int(x.split(".")[0]))
 
         # generate cbz file
+        console.print("[cyan]📦 Creating CBZ archive...[/cyan]")
         loop = asyncio.get_event_loop()
         await loop.run_in_executor(None, self._create_zip, new_folder, img_list)
 
@@ -539,7 +624,7 @@ class ImageGrabber:
                 try:
                     os.remove(os.path.join(new_folder, img))
                 except OSError as e:
-                    print(f"Could not delete {img}: {e}")
+                    console.print(f"[yellow]⚠️  Could not delete {img}: {e}[/yellow]")
 
     async def download(self):
         """
