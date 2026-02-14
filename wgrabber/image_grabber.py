@@ -1,5 +1,6 @@
 import os
 import re
+import time
 import zipfile
 from io import BytesIO
 from typing import cast
@@ -40,11 +41,7 @@ class ImageGrabber:
         # Allow injecting a custom scraper for testing
         if scraper is None:
             self.scraper = cloudscraper.create_scraper(
-                browser={
-                    'browser': 'chrome',
-                    'platform': 'windows',
-                    'mobile': False
-                }
+                browser={"browser": "chrome", "platform": "windows", "mobile": False}
             )
         else:
             self.scraper = scraper
@@ -55,7 +52,28 @@ class ImageGrabber:
         Get the data url from passed url.
         """
         url = self.base_url + next_url
-        r = self.scraper.get(url)
+
+        # Retry logic for URL resolution
+        for attempt in range(3):
+            try:
+                r = self.scraper.get(url, timeout=30)
+                if r.status_code == 200:
+                    break
+                elif r.status_code in (403, 503, 429):
+                    wait_time = (2**attempt) * 2
+                    if attempt < 2:
+                        print(f"\nSecurity check during URL resolution. Waiting {wait_time}s...")
+                        time.sleep(wait_time)
+                    else:
+                        raise ValueError(f"Failed to resolve URL after retries: {url}")
+                else:
+                    raise ValueError(f"Unexpected status {r.status_code} for {url}")
+            except Exception as e:
+                if attempt < 2:
+                    time.sleep(2)
+                else:
+                    raise ValueError(f"Failed to get data URL from {url}: {e}")
+
         soup = BeautifulSoup(r.content, "lxml")
         img_tag = soup.find("img", attrs={"id": "picarea"})
         if img_tag is None:
@@ -110,7 +128,9 @@ class ImageGrabber:
                         print("Cannot find page number.")
                         self.valid = False
                         return
-                    label_string = label_tag.get_text() if hasattr(label_tag, "get_text") else str(label_tag)
+                    label_string = (
+                        label_tag.get_text() if hasattr(label_tag, "get_text") else str(label_tag)
+                    )
                     pages = re.findall(r"\d+", label_string)
                     self.page_num = int(pages[0])
                     # find the catagory and lang tags
@@ -169,8 +189,46 @@ class ImageGrabber:
         The page crawler iterator.
         """
         url = self.base_url + start
-        for _i in range(self.page_num):
-            result = self.scraper.get(url)
+        for page_num in range(self.page_num):
+            # Retry logic for page fetching
+            max_retries = 3
+            result = None
+
+            for attempt in range(max_retries):
+                try:
+                    result = self.scraper.get(url, timeout=30)
+                    if result.status_code == 200:
+                        break
+                    elif result.status_code in (403, 503, 429):
+                        wait_time = (2**attempt) * 2
+                        if attempt < max_retries - 1:
+                            print(
+                                f"\nPage {page_num + 1}: Security check detected. Waiting {wait_time}s..."
+                            )
+                            time.sleep(wait_time)
+                        else:
+                            print(
+                                f"\nPage {page_num + 1}: Failed to fetch after {max_retries} attempts"
+                            )
+                            continue
+                    else:
+                        print(f"\nPage {page_num + 1}: Unexpected status {result.status_code}")
+                        break
+                except Exception as e:
+                    if attempt < max_retries - 1:
+                        print(f"\nError fetching page {page_num + 1}: {e}. Retrying...")
+                        time.sleep(2)
+                    else:
+                        print(f"\nFailed to fetch page {page_num + 1}: {e}")
+                        continue
+
+            if result is None or result.status_code != 200:
+                continue
+
+            # Add small delay between page requests
+            if page_num > 0:
+                time.sleep(0.3)
+
             soup = BeautifulSoup(result.content, "lxml")
             imgarea_span = soup.find("span", attrs={"id": "imgarea"})
             if imgarea_span is None:
@@ -197,33 +255,108 @@ class ImageGrabber:
             url = self.base_url + next_links[-1]["href"]
             yield img_url
 
+    def _download_image_with_retry(self, file_url, max_retries=3):
+        """
+        Download an image with retry logic for handling security checks.
+
+        Args:
+            file_url: URL of the image to download
+            max_retries: Maximum number of retry attempts
+
+        Returns:
+            Response object if successful, None otherwise
+        """
+        for attempt in range(max_retries):
+            try:
+                r = self.scraper.get(file_url, timeout=30)
+
+                # Success
+                if r.status_code == 200:
+                    return r
+
+                # Not found - try alternate extension
+                elif r.status_code == 404:
+                    return None
+
+                # Security check or rate limiting
+                elif r.status_code in (403, 503, 429):
+                    wait_time = (2**attempt) * 2  # Exponential backoff: 2s, 4s, 8s
+                    if attempt < max_retries - 1:
+                        print(
+                            f"\nSecurity check detected (status {r.status_code}). Waiting {wait_time}s before retry {attempt + 1}/{max_retries}..."
+                        )
+                        time.sleep(wait_time)
+                        continue
+                    else:
+                        print(
+                            f"\nFailed after {max_retries} attempts. Security check may require manual intervention."
+                        )
+                        return None
+
+                # Other error
+                else:
+                    print(f"\nUnexpected status code {r.status_code} for {file_url}")
+                    return None
+
+            except Exception as e:
+                if attempt < max_retries - 1:
+                    print(f"\nError downloading: {e}. Retrying...")
+                    time.sleep(2)
+                else:
+                    print(f"\nFailed to download {file_url}: {e}")
+                    return None
+
+        return None
+
     def _download_list(self, iter_list):
         """
         Download files in the list.
         """
         new_folder = os.path.join(self._base_path_modifier(), self.title)
         img_list = []
+        failed_images = []
+
         with click.progressbar(iter_list, length=self.page_num) as bar:
             for index, url in enumerate(bar):
-                # TODO may need better url generator since it may change.
+                # Rate limiting: small delay between requests to avoid triggering security checks
+                if index > 0:
+                    time.sleep(0.5)  # 500ms delay between images
+
                 file_url = "https:" + url
-                r = self.scraper.get(file_url)
-                if r.status_code == 404:
+                r = self._download_image_with_retry(file_url)
+
+                # Try alternate extension if 404
+                if r is None or r.status_code == 404:
                     if file_url.split(".")[-1] == "jpg":
-                        file_url = file_url.replace("jpg", "png")
+                        alt_url = file_url.replace("jpg", "png")
                     else:
-                        file_url = file_url.replace("png", "jpg")
-                    r = self.scraper.get(file_url)
-                elif r.status_code == 200:
+                        alt_url = file_url.replace("png", "jpg")
+                    r = self._download_image_with_retry(alt_url)
+
+                if r and r.status_code == 200:
                     img_name = str(index) + "." + file_url.split(".")[-1]
                     try:
                         img = Image.open(BytesIO(r.content))
                         img.save(new_folder + "/" + img_name)
                         img_list.append(img_name)
-                    except OSError:
-                        print(file_url + "  cannot be saved.")
+                    except OSError as e:
+                        print(f"\nCannot save {file_url}: {e}")
+                        failed_images.append((index, file_url))
                 else:
-                    pass
+                    failed_images.append((index, file_url))
+
+        # Report results
+        if failed_images:
+            print("\n\nDownload Summary:")
+            print(f"  Successfully downloaded: {len(img_list)}/{self.page_num} images")
+            print(f"  Failed: {len(failed_images)} images")
+            if len(failed_images) <= 10:
+                print(f"  Failed images: {[idx for idx, _ in failed_images]}")
+            if len(failed_images) > len(img_list) * 0.5:
+                print("\n⚠️  Warning: More than 50% of images failed. You may need to:")
+                print("     1. Wait a few minutes and try again")
+                print("     2. Check your internet connection")
+                print("     3. Verify the URL is still valid")
         # generate cbz file
         os.chdir(new_folder)
         zipf = zipfile.ZipFile(f"{self.title}.cbz", "w", zipfile.ZIP_DEFLATED)

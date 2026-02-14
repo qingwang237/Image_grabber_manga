@@ -126,7 +126,7 @@ class TestImageGrabberBasics:
             result = grabber._url_resolver("/page/1.html")
 
         assert result == "//img.example.com/image.jpg"
-        mock_scraper.get.assert_called_with("https://example.com/page/1.html")
+        mock_scraper.get.assert_called_with("https://example.com/page/1.html", timeout=30)
 
 
 class TestImageGrabberValidation:
