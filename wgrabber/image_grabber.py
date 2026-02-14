@@ -556,10 +556,6 @@ class ImageGrabber:
         # Use a semaphore to limit concurrent downloads (max 3 at a time)
         semaphore = asyncio.Semaphore(3)
 
-        # Shared rate limiter to avoid clustered requests across concurrent tasks
-        rate_lock = asyncio.Lock()
-        last_request_time = [0.0]  # Use list to allow mutation in nested function
-
         # Shared rate limiter to avoid clustered requests across concurrent tasks.
         # Ensures at least self.current_delay seconds between download starts.
         rate_lock = asyncio.Lock()
@@ -570,9 +566,9 @@ class ImageGrabber:
             async with semaphore:
                 # Global rate limiting across all download tasks
                 async with rate_lock:
-                    loop = asyncio.get_event_loop()
+                    loop = asyncio.get_running_loop()
                     now = loop.time()
-                    min_interval = max(getattr(self, "current_delay", 0.0), 0.0)
+                    min_interval = max(self.current_delay, 0.0) if not self.disable_delays else 0.0
                     if last_request_time > 0.0 and min_interval > 0.0:
                         elapsed = now - last_request_time
                         wait_time = min_interval - elapsed
@@ -580,18 +576,6 @@ class ImageGrabber:
                             await asyncio.sleep(wait_time)
                     # Update last_request_time to the moment we start this download
                     last_request_time = loop.time()
-                # Global rate limiting across all download tasks
-                async with rate_lock:
-                    loop = asyncio.get_running_loop()
-                    now = loop.time()
-                    min_interval = max(self.current_delay, 0.0) if not self.disable_delays else 0.0
-                    if last_request_time[0] > 0.0 and min_interval > 0.0:
-                        elapsed = now - last_request_time[0]
-                        wait_time = min_interval - elapsed
-                        if wait_time > 0:
-                            await asyncio.sleep(wait_time)
-                    # Update last_request_time to the moment we start this download
-                    last_request_time[0] = loop.time()
                 return await self._download_single_image(index, url, new_folder)
 
         # Download concurrently with rich progress bar
