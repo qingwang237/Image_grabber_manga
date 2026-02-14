@@ -342,7 +342,7 @@ class TestImageGrabberValidation:
 
         assert grabber.valid is False
         captured = capsys.readouterr()
-        assert "Cannot find data url" in captured.out
+        assert "Cannot find link in last pic_box" in captured.out
 
 
 class TestImageGrabberPageCrawl:

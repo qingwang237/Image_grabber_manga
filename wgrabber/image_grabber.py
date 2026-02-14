@@ -5,6 +5,7 @@ import time
 import zipfile
 from io import BytesIO
 from typing import cast
+from urllib.parse import urlparse
 
 import click
 import cloudscraper
@@ -19,25 +20,20 @@ class ImageGrabber:
     the image grabber class.
     """
 
-    # Headers to mimic a real browser and avoid 403 Forbidden
-    HEADERS = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
-        "Accept-Language": "en-US,en;q=0.5",
-        "Accept-Encoding": "gzip, deflate, br",
-        "Connection": "keep-alive",
-        "Upgrade-Insecure-Requests": "1",
-    }
-
-    def __init__(self, start_url, base_path, mode, zip_only=False, scraper=None):
+    def __init__(
+        self, start_url, base_path, mode, zip_only=False, scraper=None, disable_delays=False
+    ):
         """
         The constructor func.
         """
         self.url = start_url
         self.base_path = base_path
-        self.base_url = "https://" + (self.url.split("/"))[-2]
+        # Use urllib.parse to properly construct base_url from scheme + netloc
+        parsed_url = urlparse(self.url)
+        self.base_url = f"{parsed_url.scheme}://{parsed_url.netloc}"
         self.mode = mode
         self.zip_only = zip_only
+        self.disable_delays = disable_delays  # Allow disabling delays for tests
         self.consecutive_failures = 0  # Track consecutive security check failures
         # Create cloudscraper session to bypass Cloudflare protection
         # Allow injecting a custom scraper for testing
@@ -110,9 +106,23 @@ class ImageGrabber:
                     print("Please make sure the url is correct.")
                     self.valid = False
                     return
-                link = soup.find_all("div", attrs={"class": "pic_box"})[-1].find("a")
+
+                # Check if pic_box elements exist before accessing
+                pic_boxes = soup.find_all("div", attrs={"class": "pic_box"})
+                if not pic_boxes:
+                    print("Cannot find any pic_box elements.")
+                    self.valid = False
+                    return
+
+                # Get the last pic_box link
+                last_pic_box_link = pic_boxes[-1].find("a")
+                if last_pic_box_link is None:
+                    print("Cannot find link in last pic_box.")
+                    self.valid = False
+                    return
+
                 # also save the first link
-                first_pic_box = soup.find("div", attrs={"class": "pic_box"})
+                first_pic_box = pic_boxes[0]
                 if first_pic_box is None:
                     print("Cannot find pic_box div.")
                     self.valid = False
@@ -129,8 +139,14 @@ class ImageGrabber:
                     self.valid = False
                     return
                 self.img_link = href
-                if link:
-                    self.data_url = self._url_resolver(link["href"])
+                if last_pic_box_link:
+                    last_pic_box_link = cast(Tag, last_pic_box_link)
+                    data_url_href = last_pic_box_link.get("href")
+                    if data_url_href is None:
+                        print("Last pic_box link has no href.")
+                        self.valid = False
+                        return
+                    self.data_url = self._url_resolver(data_url_href)
                     patten = re.compile(r"頁數")
                     label_tag = soup.find("label", text=patten)
                     if label_tag is None:
@@ -250,7 +266,7 @@ class ImageGrabber:
                 continue
 
             # Random delay between page requests (1-3 seconds) to appear more human
-            if page_num > 0:
+            if page_num > 0 and not self.disable_delays:
                 delay = random.uniform(1.0, 3.0)
                 time.sleep(delay)
 
@@ -351,32 +367,42 @@ class ImageGrabber:
         with click.progressbar(iter_list, length=self.page_num) as bar:
             for index, url in enumerate(bar):
                 # Rate limiting: random delay between requests (1-2 seconds) to appear more human
-                if index > 0:
+                if index > 0 and not self.disable_delays:
                     delay = random.uniform(1.0, 2.5)
                     time.sleep(delay)
 
                 file_url = "https:" + url
                 r = self._download_image_with_retry(file_url)
 
+                # Track the effective URL and extension after fallback
+                effective_url = file_url
+                effective_extension = file_url.split(".")[-1]
+
                 # Try alternate extension if 404
                 if r is None or r.status_code == 404:
-                    if file_url.split(".")[-1] == "jpg":
+                    if effective_extension == "jpg":
                         alt_url = file_url.replace("jpg", "png")
+                        effective_extension = "png"
                     else:
                         alt_url = file_url.replace("png", "jpg")
+                        effective_extension = "jpg"
                     r = self._download_image_with_retry(alt_url)
+                    if r and r.status_code == 200:
+                        effective_url = alt_url
 
                 if r and r.status_code == 200:
-                    img_name = str(index) + "." + file_url.split(".")[-1]
+                    img_name = f"{index}.{effective_extension}"
                     try:
                         img = Image.open(BytesIO(r.content))
                         img.save(new_folder + "/" + img_name)
                         img_list.append(img_name)
                     except OSError as e:
-                        print(f"\nCannot save {file_url}: {e}")
-                        failed_images.append((index, file_url))
+                        print(f"\nCannot save {effective_url}: {e}")
+                        failed_images.append((index, effective_url))
                 else:
-                    failed_images.append((index, file_url))
+                    failed_images.append(
+                        (index, effective_url if "effective_url" in locals() else file_url)
+                    )
 
         # Report results
         if failed_images:
