@@ -161,7 +161,13 @@ class ImageGrabber:
                         "寫真&Cosplay": "photo",
                         "韓漫": "Korean",
                     }
-                    self.tag = category_mapping.get(tags[1].string, "unknown")
+                    if len(tags) > 1:
+                        self.tag = category_mapping.get(tags[1].string, "unknown")
+                    else:
+                        print("Cannot determine category from breadcrumb tags.")
+                        self.tag = "unknown"
+                        self.valid = False
+                        return
 
                     # Language/type mapping - add new languages here
                     language_mapping = {
