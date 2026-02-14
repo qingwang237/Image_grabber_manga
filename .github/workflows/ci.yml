@@ -37,7 +37,7 @@ jobs:
       run: uv run pytest --cov=wgrabber --cov-report=term-missing --cov-report=xml
 
     - name: Upload coverage to Codecov
-      if: matrix.python-version == '3.12'
+      if: matrix.python-version == '3.13'
       uses: codecov/codecov-action@v4
       with:
         file: ./coverage.xml
