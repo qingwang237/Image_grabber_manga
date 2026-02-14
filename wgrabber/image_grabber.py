@@ -560,8 +560,26 @@ class ImageGrabber:
         rate_lock = asyncio.Lock()
         last_request_time = [0.0]  # Use list to allow mutation in nested function
 
+        # Shared rate limiter to avoid clustered requests across concurrent tasks.
+        # Ensures at least self.current_delay seconds between download starts.
+        rate_lock = asyncio.Lock()
+        last_request_time = 0.0
+
         async def download_with_semaphore(index, url):
+            nonlocal last_request_time
             async with semaphore:
+                # Global rate limiting across all download tasks
+                async with rate_lock:
+                    loop = asyncio.get_event_loop()
+                    now = loop.time()
+                    min_interval = max(getattr(self, "current_delay", 0.0), 0.0)
+                    if last_request_time > 0.0 and min_interval > 0.0:
+                        elapsed = now - last_request_time
+                        wait_time = min_interval - elapsed
+                        if wait_time > 0:
+                            await asyncio.sleep(wait_time)
+                    # Update last_request_time to the moment we start this download
+                    last_request_time = loop.time()
                 # Global rate limiting across all download tasks
                 async with rate_lock:
                     loop = asyncio.get_running_loop()
