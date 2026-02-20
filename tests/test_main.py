@@ -2,7 +2,7 @@
 Tests for __main__.py CLI.
 """
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 from click.testing import CliRunner
 
@@ -32,6 +32,9 @@ def test_main_with_valid_url(mock_image_grabber):
     """Test main with a valid URL."""
     mock_manga = MagicMock()
     mock_manga.valid = True
+    mock_manga.validate = AsyncMock()
+    mock_manga.download = AsyncMock()
+    mock_manga._close_scraper = AsyncMock()
     mock_image_grabber.return_value = mock_manga
 
     runner = CliRunner()
@@ -39,6 +42,7 @@ def test_main_with_valid_url(mock_image_grabber):
 
     assert result.exit_code == 0
     mock_image_grabber.assert_called_once()
+    mock_manga.validate.assert_called_once()
     mock_manga.download.assert_called_once()
 
 
@@ -47,6 +51,9 @@ def test_main_with_invalid_url(mock_image_grabber):
     """Test main with an invalid URL."""
     mock_manga = MagicMock()
     mock_manga.valid = False
+    mock_manga.validate = AsyncMock()
+    mock_manga.download = AsyncMock()
+    mock_manga._close_scraper = AsyncMock()
     mock_image_grabber.return_value = mock_manga
 
     runner = CliRunner()
@@ -62,6 +69,9 @@ def test_main_with_custom_folder(mock_image_grabber):
     """Test main with custom folder option."""
     mock_manga = MagicMock()
     mock_manga.valid = True
+    mock_manga.validate = AsyncMock()
+    mock_manga.download = AsyncMock()
+    mock_manga._close_scraper = AsyncMock()
     mock_image_grabber.return_value = mock_manga
 
     runner = CliRunner()
@@ -78,6 +88,9 @@ def test_main_with_custom_mode(mock_image_grabber):
     """Test main with custom mode option."""
     mock_manga = MagicMock()
     mock_manga.valid = True
+    mock_manga.validate = AsyncMock()
+    mock_manga.download = AsyncMock()
+    mock_manga._close_scraper = AsyncMock()
     mock_image_grabber.return_value = mock_manga
 
     runner = CliRunner()
@@ -94,6 +107,9 @@ def test_main_with_folder_without_trailing_slash(mock_image_grabber):
     """Test main adds trailing slash to folder path."""
     mock_manga = MagicMock()
     mock_manga.valid = True
+    mock_manga.validate = AsyncMock()
+    mock_manga.download = AsyncMock()
+    mock_manga._close_scraper = AsyncMock()
     mock_image_grabber.return_value = mock_manga
 
     runner = CliRunner()
@@ -110,6 +126,9 @@ def test_main_with_all_options(mock_image_grabber):
     """Test main with all options specified."""
     mock_manga = MagicMock()
     mock_manga.valid = True
+    mock_manga.validate = AsyncMock()
+    mock_manga.download = AsyncMock()
+    mock_manga._close_scraper = AsyncMock()
     mock_image_grabber.return_value = mock_manga
 
     runner = CliRunner()
@@ -130,6 +149,9 @@ def test_main_with_zip_only_flag(mock_image_grabber):
     """Test main with --zip-only flag."""
     mock_manga = MagicMock()
     mock_manga.valid = True
+    mock_manga.validate = AsyncMock()
+    mock_manga.download = AsyncMock()
+    mock_manga._close_scraper = AsyncMock()
     mock_image_grabber.return_value = mock_manga
 
     runner = CliRunner()
@@ -147,6 +169,9 @@ def test_main_without_zip_only_flag(mock_image_grabber):
     """Test main without --zip-only flag (default behavior)."""
     mock_manga = MagicMock()
     mock_manga.valid = True
+    mock_manga.validate = AsyncMock()
+    mock_manga.download = AsyncMock()
+    mock_manga._close_scraper = AsyncMock()
     mock_image_grabber.return_value = mock_manga
 
     runner = CliRunner()
